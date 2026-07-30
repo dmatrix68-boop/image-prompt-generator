@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Prompt Engine — Uncensored</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon">⚡</span>
+      <div>
+        <h1>The Prompt Engine</h1>
+        <p class="tagline">Uncensored Image-to-Prompt Generator · powered by OpenRouter</p>
+      </div>
+    </div>
+    <button id="btn-settings" class="btn ghost" title="Einstellungen">⚙️ Einstellungen</button>
+  </header>
+
+  <main class="layout">
+    <!-- ===== Left: Input ===== -->
+    <section class="panel">
+      <div class="tabs">
+        <button class="tab active" data-mode="image">🖼️ Bild → Prompt</button>
+        <button class="tab" data-mode="text">💡 Idee → Prompt</button>
+      </div>
+
+      <!-- Image mode -->
+      <div id="pane-image" class="pane">
+        <div id="dropzone" class="dropzone">
+          <input type="file" id="file-input" accept="image/*" hidden>
+          <div id="drop-hint">
+            <span class="drop-icon">📥</span>
+            <p><strong>Bild hierher ziehen</strong>, klicken zum Auswählen<br>oder mit <kbd>Strg</kbd>+<kbd>V</kbd> einfügen</p>
+          </div>
+          <img id="preview" class="preview" hidden alt="Vorschau">
+          <button id="btn-clear-img" class="btn tiny danger" hidden>✕ Bild entfernen</button>
+        </div>
+        <label class="field">
+          <span>Zusätzliche Anweisung (optional)</span>
+          <textarea id="image-extra" rows="2" placeholder="z.B. „Fokus auf Lichtstimmung“, „als Anime-Version beschreiben“ …"></textarea>
+        </label>
+      </div>
+
+      <!-- Text mode -->
+      <div id="pane-text" class="pane" hidden>
+        <label class="field">
+          <span>Deine Idee</span>
+          <textarea id="text-idea" rows="6" placeholder="Beschreibe kurz, was du generieren willst — die Engine macht daraus einen detaillierten Profi-Prompt."></textarea>
+        </label>
+      </div>
+
+      <!-- Options -->
+      <div class="options">
+        <label class="field">
+          <span>Ziel-Plattform</span>
+          <select id="opt-platform">
+            <option value="sdxl">Stable Diffusion / SDXL (Tags + Negative)</option>
+            <option value="pony">Pony / Illustrious (Booru-Tags)</option>
+            <option value="flux">Flux (natürliche Sprache)</option>
+            <option value="midjourney">Midjourney (mit --Parametern)</option>
+            <option value="generic">Universell / andere Generatoren</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Stil</span>
+          <select id="opt-style">
+            <option value="auto">Automatisch (vom Bild/Idee ableiten)</option>
+            <option value="photorealistic">Fotorealistisch</option>
+            <option value="cinematic">Cinematisch</option>
+            <option value="anime">Anime / Manga</option>
+            <option value="digital-art">Digital Art / Illustration</option>
+            <option value="3d">3D-Render</option>
+            <option value="painting">Gemälde / klassisch</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Detailgrad</span>
+          <select id="opt-detail">
+            <option value="normal">Normal</option>
+            <option value="high" selected>Hoch</option>
+            <option value="extreme">Extrem (jede Kleinigkeit)</option>
+          </select>
+        </label>
+        <label class="field check">
+          <input type="checkbox" id="opt-nsfw" checked>
+          <span>NSFW erlaubt (explizite Inhalte unzensiert beschreiben)</span>
+        </label>
+        <label class="field check">
+          <input type="checkbox" id="opt-variations">
+          <span>3 Varianten generieren</span>
+        </label>
+      </div>
+
+      <button id="btn-generate" class="btn primary big">⚡ Prompt generieren</button>
+      <p id="status" class="status"></p>
+    </section>
+
+    <!-- ===== Right: Output ===== -->
+    <section class="panel">
+      <div class="output-head">
+        <h2>Ergebnis</h2>
+        <div>
+          <button id="btn-copy" class="btn tiny" hidden>📋 Kopieren</button>
+          <button id="btn-again" class="btn tiny" hidden>🔄 Neu generieren</button>
+        </div>
+      </div>
+      <div id="output" class="output">
+        <p class="placeholder">Der generierte Prompt erscheint hier.</p>
+      </div>
+
+      <details class="history-box">
+        <summary>Verlauf (lokal gespeichert)</summary>
+        <div id="history"></div>
+        <button id="btn-clear-history" class="btn tiny danger">Verlauf löschen</button>
+      </details>
+    </section>
+  </main>
+
+  <!-- ===== Settings dialog ===== -->
+  <dialog id="dlg-settings">
+    <h2>⚙️ Einstellungen</h2>
+    <label class="field">
+      <span>OpenRouter API-Key</span>
+      <input type="password" id="set-key" placeholder="sk-or-v1-…" autocomplete="off">
+      <small>Wird nur lokal im Browser gespeichert (localStorage) und direkt an openrouter.ai gesendet. Key erstellen: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a></small>
+    </label>
+    <label class="field">
+      <span>Vision-Modell</span>
+      <select id="set-model"></select>
+      <small>Empfohlen für unzensierte Analyse: Qwen3-VL (unmoderierte Endpoints). Große Anbieter-Modelle (GPT, Claude, Gemini) verweigern NSFW-Bilder meist.</small>
+    </label>
+    <label class="field">
+      <span>Eigene Modell-ID (überschreibt Auswahl, optional)</span>
+      <input type="text" id="set-model-custom" placeholder="z.B. qwen/qwen3-vl-235b-a22b-instruct">
+    </label>
+    <div class="dlg-actions">
+      <button id="btn-refresh-models" class="btn ghost">🔄 Modellliste laden</button>
+      <button id="btn-save-settings" class="btn primary">Speichern</button>
+    </div>
+    <p class="legal">Nur für volljährige Nutzer. Keine Analyse von Darstellungen Minderjähriger oder nicht-einvernehmlicher realer Inhalte — solche Anfragen werden abgelehnt. Du bist für die Einhaltung der Nutzungsbedingungen deines Modell-Anbieters verantwortlich.</p>
+  </dialog>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
