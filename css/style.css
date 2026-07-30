@@ -109,6 +109,49 @@ textarea:focus, input:focus, select:focus { outline: 2px solid var(--accent); bo
   margin-top: 6px;
 }
 .field.check { display: flex; align-items: center; gap: 8px; grid-column: 1 / -1; margin-bottom: 8px; }
+.span2 { grid-column: 1 / -1; }
+
+.ratio-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.ratio-btn {
+  padding: 7px 14px;
+  background: var(--panel-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.ratio-btn:hover { border-color: var(--accent); }
+.ratio-btn.active {
+  background: linear-gradient(135deg, var(--accent), #5a3fd6);
+  color: #fff;
+  border-color: transparent;
+}
+
+.tech-box {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: var(--panel-2);
+}
+.tech-box summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 2px 0;
+}
+.tech-box[open] summary { margin-bottom: 10px; color: var(--text); }
+.tech-box .field.check { margin: 4px 0 10px; }
+.tech-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+}
+@media (max-width: 520px) { .tech-grid { grid-template-columns: 1fr; } }
 .field.check span { margin: 0; color: var(--text); font-size: 0.9rem; }
 .field.check input { accent-color: var(--accent); width: 17px; height: 17px; }
 

@@ -61,6 +61,9 @@
             <option value="pony">Pony / Illustrious (Booru-Tags)</option>
             <option value="flux">Flux (natürliche Sprache)</option>
             <option value="midjourney">Midjourney (mit --Parametern)</option>
+            <option value="dalle">DALL-E (natürliche Sprache)</option>
+            <option value="ideogram">Ideogram (natürliche Sprache, Text-Rendering)</option>
+            <option value="nano">Nano Banana / Gemini (natürliche Sprache)</option>
             <option value="generic">Universell / andere Generatoren</option>
           </select>
         </label>
@@ -84,6 +87,18 @@
             <option value="extreme">Extrem (jede Kleinigkeit)</option>
           </select>
         </label>
+        <div class="field span2">
+          <span>Bildformat (Aspect Ratio)</span>
+          <div id="ratio-row" class="ratio-row"></div>
+        </div>
+        <details class="tech-box span2" id="tech-box">
+          <summary>Technical Parameters</summary>
+          <label class="field check">
+            <input type="checkbox" id="opt-logic">
+            <span>Logic Mode (streng logischer, präziser Promptaufbau)</span>
+          </label>
+          <div id="tech-grid" class="tech-grid"></div>
+        </details>
         <label class="field check">
           <input type="checkbox" id="opt-nsfw" checked>
           <span>NSFW erlaubt (explizite Inhalte unzensiert beschreiben)</span>

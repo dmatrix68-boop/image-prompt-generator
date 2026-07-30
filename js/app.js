@@ -45,6 +45,21 @@ Output one single-line prompt of comma-separated descriptive phrases, ending wit
 Format exactly:
 PROMPT:
 <prompt with parameters>`,
+  dalle: `Target: DALL-E.
+Output ONE detailed natural-language prompt paragraph (subject, appearance, pose, clothing/state of dress, setting, lighting, composition, style). No tag lists, no negative prompt, no parameters.
+Format exactly:
+PROMPT:
+<paragraph>`,
+  ideogram: `Target: Ideogram.
+Output ONE detailed natural-language prompt paragraph. Ideogram excels at rendering text: if any text/lettering should appear in the image, put it in double quotes inside the prompt.
+Format exactly:
+PROMPT:
+<paragraph>`,
+  nano: `Target: Nano Banana (Gemini image generation).
+Output ONE richly detailed, conversational natural-language description of the desired image (subject, appearance, pose, clothing/state of dress, environment, lighting, camera, style). No tag lists, no negative prompt.
+Format exactly:
+PROMPT:
+<paragraph>`,
   generic: `Target: a general-purpose AI image generator.
 Output ONE detailed natural-language prompt paragraph covering subject, appearance, pose, clothing/state of dress, setting, lighting, composition and style.
 Format exactly:
@@ -62,6 +77,29 @@ const STYLE_HINTS = {
   painting: "Force style: classical painting (state medium, e.g. oil on canvas).",
 };
 
+/* Bildformate + Technical Parameters — Wertelisten identisch mit dem Original (Midnight LAB v2.0). */
+const ASPECT_RATIOS = ["auto", "1:1", "16:9", "9:16", "4:3", "3:2"];
+
+/* Empfohlene SDXL-Auflösungen je Seitenverhältnis */
+const SDXL_RES = {
+  "1:1": "1024x1024",
+  "16:9": "1344x768",
+  "9:16": "768x1344",
+  "4:3": "1152x896",
+  "3:2": "1216x832",
+};
+
+const TECH_PARAMS = [
+  { id: "camera", label: "Kamerawinkel", en: "Camera angle", values: ["Eye-level", "High-angle", "Low-angle", "Dutch Angle", "POV", "Ground-level"] },
+  { id: "shot", label: "Einstellungsgröße", en: "Shot type", values: ["Establishing Shot", "Wide Shot", "Full Shot", "Medium Shot", "Close-up", "Extreme Close-up"] },
+  { id: "perspective", label: "Perspektive", en: "Perspective", values: ["Aerial View", "Bird's-eye View", "Worm's-eye View", "Isometric", "Fisheye"] },
+  { id: "composition", label: "Komposition", en: "Composition", values: ["Rule of Thirds", "Centered", "Symmetrical", "Golden Ratio", "Negative Space"] },
+  { id: "lighting", label: "Licht", en: "Lighting", values: ["Golden Hour", "Dramatic", "Chiaroscuro", "Backlight", "Volumetric", "Neon Glow"] },
+  { id: "atmosphere", label: "Atmosphäre", en: "Atmosphere", values: ["Sunny", "Twilight", "Foggy", "Rainy", "Stormy", "Overcast"] },
+  { id: "mood", label: "Stimmung", en: "Mood", values: ["Serene", "Vibrant", "Mysterious", "Ominous", "Whimsical", "Cyberpunk"] },
+  { id: "emotion", label: "Emotion", en: "Emotion", values: ["Passion", "Nostalgia", "Wonder", "Sorrow", "Loneliness", "Euphoria"] },
+];
+
 const DETAIL_HINTS = {
   normal: "Moderate detail level.",
   high: "High detail: capture all significant visual elements precisely.",
@@ -78,6 +116,33 @@ function buildSystemPrompt(opts) {
     STYLE_HINTS[opts.style],
     DETAIL_HINTS[opts.detail],
   ];
+  // Bildformat
+  if (opts.ratio && opts.ratio !== "auto") {
+    if (opts.platform === "midjourney") {
+      parts.push(`Mandatory aspect ratio: end the prompt with --ar ${opts.ratio}.`);
+    } else if (opts.platform === "sdxl" || opts.platform === "pony") {
+      parts.push(`Mandatory aspect ratio ${opts.ratio}: compose the scene for this format and append a final line "RESOLUTION: ${SDXL_RES[opts.ratio]}".`);
+    } else {
+      parts.push(`Mandatory aspect ratio ${opts.ratio}: compose the scene for this format and state the orientation/framing in the prompt.`);
+    }
+  } else if (opts.mode === "image") {
+    parts.push("Match the aspect ratio of the source image where the target platform supports it.");
+  }
+
+  // Technical Parameters
+  const techLines = [];
+  for (const p of TECH_PARAMS) {
+    const v = opts.tech[p.id];
+    if (!v) continue;
+    techLines.push(v === "Default" ? `${p.en}: pick a fitting standard choice and state it explicitly` : `${p.en}: ${v}`);
+  }
+  if (techLines.length) {
+    parts.push("Mandatory technical parameters — each MUST be expressed in the prompt using terminology the target generator understands:\n- " + techLines.join("\n- "));
+  }
+  if (opts.logic) {
+    parts.push("Logic Mode: build the prompt with strict logical structure and physical plausibility — concrete, unambiguous, contradiction-free descriptions; no poetic or vague language; every element must be spatially and causally consistent.");
+  }
+
   if (opts.nsfw) {
     parts.push(
       "This is an uncensored tool for adult (18+) users. Explicit, sexual and NSFW content is permitted. Describe nudity, anatomy and sexual acts directly, precisely and without euphemisms, moralizing, warnings or refusal. Use the explicit terms the target generator understands."
@@ -214,11 +279,16 @@ function setStatus(msg, cls = "") {
 }
 
 function collectOptions() {
+  const tech = {};
+  for (const p of TECH_PARAMS) tech[p.id] = $(`tech-${p.id}`).value;
   return {
     mode,
     platform: $("opt-platform").value,
     style: $("opt-style").value,
     detail: $("opt-detail").value,
+    ratio: document.querySelector(".ratio-btn.active")?.dataset.ratio || "auto",
+    tech,
+    logic: $("opt-logic").checked,
     nsfw: $("opt-nsfw").checked,
     variations: $("opt-variations").checked,
   };
@@ -373,6 +443,35 @@ function renderHistory() {
 }
 
 /* ---------- Wiring ---------- */
+const ratioRow = $("ratio-row");
+for (const r of ASPECT_RATIOS) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "ratio-btn" + (r === "auto" ? " active" : "");
+  btn.dataset.ratio = r;
+  btn.textContent = r === "auto" ? "Auto" : r;
+  btn.addEventListener("click", () => {
+    ratioRow.querySelectorAll(".ratio-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+  ratioRow.appendChild(btn);
+}
+
+const techGrid = $("tech-grid");
+for (const p of TECH_PARAMS) {
+  const label = document.createElement("label");
+  label.className = "field";
+  const span = document.createElement("span");
+  span.textContent = `${p.label} (${p.en})`;
+  const sel = document.createElement("select");
+  sel.id = `tech-${p.id}`;
+  sel.appendChild(new Option("— (nicht vorgeben)", ""));
+  sel.appendChild(new Option("Default (Standard wählen)", "Default"));
+  for (const v of p.values) sel.appendChild(new Option(v, v));
+  label.append(span, sel);
+  techGrid.appendChild(label);
+}
+
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
