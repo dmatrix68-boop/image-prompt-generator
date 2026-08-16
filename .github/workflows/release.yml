@@ -19,12 +19,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Create tag and release
+      - name: Build release package
+        run: |
+          mkdir -p dist
+          zip -r "dist/image-prompt-generator-${{ inputs.tag }}.zip" \
+            index.html css js README.md README.de.md LICENSE
+      - name: Create release or upload package to existing one
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ inputs.tag }}" \
-            --repo "${{ github.repository }}" \
-            --target "${{ github.sha }}" \
-            --title "${{ inputs.title != '' && inputs.title || inputs.tag }}" \
-            --notes-file .github/RELEASE_NOTES.md
+          if gh release view "${{ inputs.tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "${{ inputs.tag }}" dist/*.zip \
+              --repo "${{ github.repository }}" --clobber
+          else
+            gh release create "${{ inputs.tag }}" dist/*.zip \
+              --repo "${{ github.repository }}" \
+              --target "${{ github.sha }}" \
+              --title "${{ inputs.title != '' && inputs.title || inputs.tag }}" \
+              --notes-file .github/RELEASE_NOTES.md
+          fi
