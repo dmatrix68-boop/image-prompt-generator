@@ -13,18 +13,24 @@
       <span class="brand-icon">⚡</span>
       <div>
         <h1>The Prompt Engine</h1>
-        <p class="tagline">Uncensored Image-to-Prompt Generator · powered by OpenRouter</p>
+        <p class="tagline" data-i18n="tagline">Uncensored Image-to-Prompt Generator · powered by OpenRouter</p>
       </div>
     </div>
-    <button id="btn-settings" class="btn ghost" title="Einstellungen">⚙️ Einstellungen</button>
+    <div class="topbar-actions">
+      <div class="lang-switch" id="lang-switch" role="group" aria-label="Language">
+        <button type="button" data-lang="de" class="active">DE</button>
+        <button type="button" data-lang="en">EN</button>
+      </div>
+      <button id="btn-settings" class="btn ghost" data-i18n="settingsBtn">⚙️ Einstellungen</button>
+    </div>
   </header>
 
   <main class="layout">
     <!-- ===== Left: Input ===== -->
     <section class="panel">
       <div class="tabs">
-        <button class="tab active" data-mode="image">🖼️ Bild → Prompt</button>
-        <button class="tab" data-mode="text">💡 Idee → Prompt</button>
+        <button class="tab active" data-mode="image" data-i18n="tab.image">🖼️ Bild → Prompt</button>
+        <button class="tab" data-mode="text" data-i18n="tab.text">💡 Idee → Prompt</button>
       </div>
 
       <!-- Image mode -->
@@ -33,132 +39,134 @@
           <input type="file" id="file-input" accept="image/*" hidden>
           <div id="drop-hint">
             <span class="drop-icon">📥</span>
-            <p><strong>Bild hierher ziehen</strong>, klicken zum Auswählen<br>oder mit <kbd>Strg</kbd>+<kbd>V</kbd> einfügen</p>
+            <p data-i18n-html="drop.hint"><strong>Bild hierher ziehen</strong>, klicken zum Auswählen<br>oder mit <kbd>Strg</kbd>+<kbd>V</kbd> einfügen</p>
           </div>
-          <img id="preview" class="preview" hidden alt="Vorschau">
-          <button id="btn-clear-img" class="btn tiny danger" hidden>✕ Bild entfernen</button>
+          <img id="preview" class="preview" hidden alt="Preview">
+          <button id="btn-clear-img" class="btn tiny danger" hidden data-i18n="img.clear">✕ Bild entfernen</button>
         </div>
         <label class="field">
-          <span>Zusätzliche Anweisung (optional)</span>
-          <textarea id="image-extra" rows="2" placeholder="z.B. „Fokus auf Lichtstimmung“, „als Anime-Version beschreiben“ …"></textarea>
+          <span data-i18n="img.extra.label">Zusätzliche Anweisung (optional)</span>
+          <textarea id="image-extra" rows="2" data-i18n-ph="img.extra.ph" placeholder="z.B. „Fokus auf Lichtstimmung“, „als Anime-Version beschreiben“ …"></textarea>
         </label>
       </div>
 
       <!-- Text mode -->
       <div id="pane-text" class="pane" hidden>
         <label class="field">
-          <span>Deine Idee</span>
-          <textarea id="text-idea" rows="6" placeholder="Beschreibe kurz, was du generieren willst — die Engine macht daraus einen detaillierten Profi-Prompt."></textarea>
+          <span data-i18n="idea.label">Deine Idee</span>
+          <textarea id="text-idea" rows="6" data-i18n-ph="idea.ph" placeholder="Beschreibe kurz, was du generieren willst — die Engine macht daraus einen detaillierten Profi-Prompt."></textarea>
         </label>
       </div>
 
       <!-- Options -->
       <div class="options">
         <label class="field">
-          <span>Ziel-Plattform</span>
+          <span data-i18n="opt.platform">Ziel-Plattform</span>
           <select id="opt-platform">
-            <option value="sdxl">Stable Diffusion / SDXL (Tags + Negative)</option>
-            <option value="pony">Pony / Illustrious (Booru-Tags)</option>
-            <option value="flux">Flux (natürliche Sprache)</option>
-            <option value="midjourney">Midjourney (mit --Parametern)</option>
-            <option value="dalle">DALL-E (natürliche Sprache)</option>
-            <option value="ideogram">Ideogram (natürliche Sprache, Text-Rendering)</option>
-            <option value="nano">Nano Banana / Gemini (natürliche Sprache)</option>
-            <option value="qwen-image">Qwen-Image (natürliche Sprache, Text-Rendering)</option>
-            <option value="krea2">Krea 2 (fotorealistisch, natürliche Sprache)</option>
-            <option value="generic">Universell / andere Generatoren</option>
+            <option value="sdxl" data-i18n="plat.sdxl">Stable Diffusion / SDXL (Tags + Negative)</option>
+            <option value="pony" data-i18n="plat.pony">Pony / Illustrious (Booru-Tags)</option>
+            <option value="flux" data-i18n="plat.flux">Flux (natürliche Sprache)</option>
+            <option value="midjourney" data-i18n="plat.mj">Midjourney (mit --Parametern)</option>
+            <option value="dalle" data-i18n="plat.dalle">DALL-E (natürliche Sprache)</option>
+            <option value="ideogram" data-i18n="plat.ideogram">Ideogram (natürliche Sprache, Text-Rendering)</option>
+            <option value="nano" data-i18n="plat.nano">Nano Banana / Gemini (natürliche Sprache)</option>
+            <option value="qwen-image" data-i18n="plat.qwen">Qwen-Image (natürliche Sprache, Text-Rendering)</option>
+            <option value="krea2" data-i18n="plat.krea2">Krea 2 (fotorealistisch, natürliche Sprache)</option>
+            <option value="generic" data-i18n="plat.generic">Universell / andere Generatoren</option>
           </select>
         </label>
         <label class="field">
-          <span>Stil</span>
+          <span data-i18n="opt.style">Stil</span>
           <select id="opt-style">
-            <option value="auto">Automatisch (vom Bild/Idee ableiten)</option>
-            <option value="photorealistic">Fotorealistisch</option>
-            <option value="cinematic">Cinematisch</option>
-            <option value="anime">Anime / Manga</option>
-            <option value="digital-art">Digital Art / Illustration</option>
-            <option value="3d">3D-Render</option>
-            <option value="painting">Gemälde / klassisch</option>
+            <option value="auto" data-i18n="style.auto">Automatisch (vom Bild/Idee ableiten)</option>
+            <option value="photorealistic" data-i18n="style.photo">Fotorealistisch</option>
+            <option value="cinematic" data-i18n="style.cine">Cinematisch</option>
+            <option value="anime" data-i18n="style.anime">Anime / Manga</option>
+            <option value="digital-art" data-i18n="style.digital">Digital Art / Illustration</option>
+            <option value="3d" data-i18n="style.3d">3D-Render</option>
+            <option value="painting" data-i18n="style.paint">Gemälde / klassisch</option>
           </select>
         </label>
         <label class="field">
-          <span>Detailgrad</span>
+          <span data-i18n="opt.detail">Detailgrad</span>
           <select id="opt-detail">
-            <option value="normal">Normal</option>
-            <option value="high" selected>Hoch</option>
-            <option value="extreme">Extrem (jede Kleinigkeit)</option>
+            <option value="normal" data-i18n="detail.normal">Normal</option>
+            <option value="high" selected data-i18n="detail.high">Hoch</option>
+            <option value="extreme" data-i18n="detail.extreme">Extrem (jede Kleinigkeit)</option>
           </select>
         </label>
         <div class="field span2">
-          <span>Bildformat (Aspect Ratio)</span>
+          <span data-i18n="ratio.label">Bildformat (Aspect Ratio)</span>
           <div id="ratio-row" class="ratio-row"></div>
         </div>
         <details class="tech-box span2" id="tech-box">
           <summary>Technical Parameters</summary>
           <label class="field check">
             <input type="checkbox" id="opt-logic">
-            <span>Logic Mode (streng logischer, präziser Promptaufbau)</span>
+            <span data-i18n="logic.label">Logic Mode (streng logischer, präziser Promptaufbau)</span>
           </label>
           <div id="tech-grid" class="tech-grid"></div>
         </details>
         <label class="field check">
           <input type="checkbox" id="opt-nsfw" checked>
-          <span>NSFW erlaubt (explizite Inhalte unzensiert beschreiben)</span>
+          <span data-i18n="nsfw.label">NSFW erlaubt (explizite Inhalte unzensiert beschreiben)</span>
         </label>
         <label class="field check">
           <input type="checkbox" id="opt-variations">
-          <span>3 Varianten generieren</span>
+          <span data-i18n="variations.label">3 Varianten generieren</span>
         </label>
       </div>
 
-      <button id="btn-generate" class="btn primary big">⚡ Prompt generieren</button>
+      <button id="btn-generate" class="btn primary big" data-i18n="generate.btn">⚡ Prompt generieren</button>
       <p id="status" class="status"></p>
     </section>
 
     <!-- ===== Right: Output ===== -->
     <section class="panel">
       <div class="output-head">
-        <h2>Ergebnis</h2>
+        <h2 data-i18n="result.h">Ergebnis</h2>
         <div>
-          <button id="btn-copy" class="btn tiny" hidden>📋 Kopieren</button>
-          <button id="btn-again" class="btn tiny" hidden>🔄 Neu generieren</button>
+          <button id="btn-copy" class="btn tiny" hidden data-i18n="copy.btn">📋 Kopieren</button>
+          <button id="btn-again" class="btn tiny" hidden data-i18n="again.btn">🔄 Neu generieren</button>
         </div>
       </div>
       <div id="output" class="output">
-        <p class="placeholder">Der generierte Prompt erscheint hier.</p>
+        <p class="placeholder" data-i18n="output.ph">Der generierte Prompt erscheint hier.</p>
       </div>
 
       <details class="history-box">
-        <summary>Verlauf (lokal gespeichert)</summary>
+        <summary data-i18n="history.summary">Verlauf (lokal gespeichert)</summary>
         <div id="history"></div>
-        <button id="btn-clear-history" class="btn tiny danger">Verlauf löschen</button>
+        <button id="btn-clear-history" class="btn tiny danger" data-i18n="history.clear">Verlauf löschen</button>
       </details>
     </section>
   </main>
 
   <!-- ===== Settings dialog ===== -->
   <dialog id="dlg-settings">
-    <h2>⚙️ Einstellungen</h2>
+    <h2 data-i18n="dlg.h">⚙️ Einstellungen</h2>
     <label class="field">
-      <span>OpenRouter API-Key</span>
+      <span data-i18n="dlg.key.label">OpenRouter API-Key</span>
       <input type="password" id="set-key" placeholder="sk-or-v1-…" autocomplete="off">
-      <small>Wird nur lokal im Browser gespeichert (localStorage) und direkt an openrouter.ai gesendet. Key erstellen: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a></small>
+      <small data-i18n-html="dlg.key.small">Wird nur lokal im Browser gespeichert (localStorage) und direkt an openrouter.ai gesendet. Key erstellen: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a></small>
     </label>
     <label class="field">
-      <span>Vision-Modell</span>
+      <span data-i18n="dlg.model.label">Vision-Modell</span>
       <select id="set-model"></select>
-      <small>Empfohlen für unzensierte Analyse: Qwen3-VL (unmoderierte Endpoints). Große Anbieter-Modelle (GPT, Claude, Gemini) verweigern NSFW-Bilder meist.</small>
+      <small data-i18n="dlg.model.small">Empfohlen für unzensierte Analyse: Qwen3-VL (unmoderierte Endpoints). Große Anbieter-Modelle (GPT, Claude, Gemini) verweigern NSFW-Bilder meist.</small>
     </label>
     <label class="field">
-      <span>Eigene Modell-ID (überschreibt Auswahl, optional)</span>
+      <span data-i18n="dlg.custom.label">Eigene Modell-ID (überschreibt Auswahl, optional)</span>
       <input type="text" id="set-model-custom" placeholder="z.B. qwen/qwen3-vl-235b-a22b-instruct">
     </label>
     <div class="dlg-actions">
-      <button id="btn-refresh-models" class="btn ghost">🔄 Modellliste laden</button>
-      <button id="btn-save-settings" class="btn primary">Speichern</button>
+      <button id="btn-refresh-models" class="btn ghost" data-i18n="dlg.refresh">🔄 Modellliste laden</button>
+      <button id="btn-save-settings" class="btn primary" data-i18n="dlg.save">Speichern</button>
     </div>
-    <p class="legal">Nur für volljährige Nutzer. Keine Analyse von Darstellungen Minderjähriger oder nicht-einvernehmlicher realer Inhalte — solche Anfragen werden abgelehnt. Du bist für die Einhaltung der Nutzungsbedingungen deines Modell-Anbieters verantwortlich.</p>
+    <p class="legal" data-i18n="dlg.legal">Nur für volljährige Nutzer. Keine Analyse von Darstellungen Minderjähriger oder nicht-einvernehmlicher realer Inhalte — solche Anfragen werden abgelehnt. Du bist für die Einhaltung der Nutzungsbedingungen deines Modell-Anbieters verantwortlich.</p>
   </dialog>
+
+  <div class="version-footer">v1.0</div>
 
   <script src="js/app.js"></script>
 </body>

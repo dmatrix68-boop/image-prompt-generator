@@ -1,58 +1,61 @@
 # ⚡ The Prompt Engine — Uncensored (OpenRouter Edition)
 
-Funktionaler Nachbau von *thepromptengine.midnightlabai.com* — ohne dessen Kernfehler:
-Das Original hatte `gemini-2.5-flash` fest im Frontend-Bundle verdrahtet; nachdem Google
-das Modell für neue API-Konten abgeschaltet hat, lief jeder neue Key auf einen 404.
+*[Deutsche Version](README.de.md)*
 
-Dieser Klon nutzt stattdessen **OpenRouter** mit **frei wählbarem Vision-Modell** —
-kein Modell ist hartkodiert, die Modellliste wird live vom OpenRouter-Katalog geladen.
+Functional rebuild of *thepromptengine.midnightlabai.com* — without its fatal flaw:
+the original hardcoded `gemini-2.5-flash` in its frontend bundle; after Google retired
+that model for new API accounts, every new key ran into a 404.
+
+This clone uses **OpenRouter** with a **freely selectable vision model** instead —
+no model is hardcoded, and the model list is loaded live from the OpenRouter catalog.
 
 ## Features
 
-- **Bild → Prompt**: Bild hochladen (Drag & Drop, Klick oder Strg+V), ein Vision-LLM
-  analysiert es und erzeugt einen detaillierten Generierungs-Prompt.
-- **Idee → Prompt**: Kurze Idee eingeben, die Engine baut daraus einen Profi-Prompt.
-- **Ziel-Plattformen**: SDXL (Tags + Negative Prompt), Pony/Illustrious (Booru-Tags
-  inkl. score-/rating-Tags), Flux (Fließtext), Midjourney (inkl. `--ar`/`--stylize`),
-  DALL-E, Ideogram, Nano Banana/Gemini, Qwen-Image (mit Text-Rendering), Krea 2
-  (fotorealistisch), universell.
-- **Bildformate**: Aspect-Ratio-Auswahl wie im Original (Auto, 1:1, 16:9, 9:16, 4:3,
-  3:2) — bei Midjourney als `--ar`, bei SDXL/Pony mit passender Auflösungsempfehlung.
-- **Technical Parameters** (wie im Original, ausklappbar): Logic Mode, Camera Angle,
-  Shot Type, Perspective, Composition, Lighting, Atmosphere, Mood, Emotion — jeweils
-  mit denselben Wertelisten wie Midnight LAB v2.0.
-- **Optionen**: Stil-Vorgabe, Detailgrad, 3-Varianten-Modus, Streaming-Ausgabe,
-  Kopier-Button, lokaler Verlauf.
-- **Unzensiert**: NSFW-Schalter — explizite Bilder werden direkt und ohne Umschreibungen
-  analysiert. Empfohlene Standard-Modelle (Qwen3-VL-Familie) laufen auf unmoderierten
-  OpenRouter-Endpoints. Harte Grenzen bleiben immer aktiv: keine Darstellungen
-  Minderjähriger, keine sexuellen Inhalte realer, identifizierbarer Personen.
-- **Kein Backend**: Reines statisches Frontend. Der API-Key bleibt im localStorage des
-  Browsers und geht ausschließlich direkt an `openrouter.ai`.
+- **Image → Prompt**: Upload an image (drag & drop, click, or Ctrl+V); a vision LLM
+  analyzes it and produces a detailed generation prompt.
+- **Idea → Prompt**: Enter a short idea and the engine expands it into a professional
+  prompt.
+- **Target platforms**: SDXL (tags + negative prompt), Pony/Illustrious (booru tags
+  incl. score/rating tags), Flux (prose), Midjourney (incl. `--ar`/`--stylize`),
+  DALL-E, Ideogram, Nano Banana/Gemini, Qwen-Image (with text rendering), Krea 2
+  (photorealistic), universal.
+- **Image formats**: Aspect-ratio selection as in the original (Auto, 1:1, 16:9, 9:16,
+  4:3, 3:2) — emitted as `--ar` for Midjourney, with a matching resolution
+  recommendation for SDXL/Pony.
+- **Technical parameters** (as in the original, collapsible): Logic Mode, Camera Angle,
+  Shot Type, Perspective, Composition, Lighting, Atmosphere, Mood, Emotion — each with
+  the same value lists as Midnight LAB v2.0.
+- **Bilingual**: Language switch (DE/EN) in the top right; the choice is remembered.
+- **Options**: Style preset, detail level, 3-variation mode, streaming output, copy
+  button, local history.
+- **Uncensored**: NSFW toggle — explicit images are analyzed directly and without
+  euphemisms. The recommended default models (Qwen3-VL family) run on unmoderated
+  OpenRouter endpoints. Hard limits always stay active: no depictions of minors, no
+  sexual content involving real, identifiable people.
+- **No backend**: Pure static frontend. The API key stays in the browser's
+  localStorage and is sent exclusively and directly to `openrouter.ai`.
 
-## Nutzung
+## Usage
 
-1. API-Key auf [openrouter.ai/keys](https://openrouter.ai/keys) erstellen.
-2. Seite starten — lokal reicht ein statischer Server:
+1. Create an API key at [openrouter.ai/keys](https://openrouter.ai/keys).
+2. Serve the page — locally, any static server will do:
    ```bash
    python3 -m http.server 8080
    # → http://localhost:8080
    ```
-   Alternativ auf GitHub Pages / Netlify / einem beliebigen Webspace ablegen.
-3. Unter **⚙️ Einstellungen** den Key eintragen und ein Vision-Modell wählen.
-4. Bild hochladen oder Idee eingeben → **⚡ Prompt generieren**.
+   Alternatively host it on GitHub Pages / Netlify / any web space.
+3. Enter the key under **⚙️ Settings** and pick a vision model.
+4. Upload an image or enter an idea → **⚡ Generate prompt**.
 
-## Modell-Hinweise
+## Model notes
 
-- Für unzensierte Analyse: **Qwen3 VL 235B / 30B / 32B** oder **Qwen2.5 VL 72B**
-  (unmoderierte Endpoints, günstig). Grok ist ebenfalls wenig restriktiv.
-- GPT-, Claude- und Gemini-Modelle funktionieren für SFW-Inhalte, verweigern aber
-  in der Regel NSFW-Bilder.
-- Ist ein Modell irgendwann nicht mehr verfügbar (der Fehler des Originals), einfach
-  in den Einstellungen ein anderes wählen — oder eine beliebige Modell-ID von Hand
-  eintragen.
+- For uncensored analysis: **Qwen3 VL 235B / 30B / 32B** or **Qwen2.5 VL 72B**
+  (unmoderated endpoints, cheap). Grok is also fairly permissive.
+- GPT, Claude, and Gemini models work for SFW content but usually refuse NSFW images.
+- If a model ever becomes unavailable (the original's bug), just pick another one in
+  the settings — or enter any model ID by hand.
 
-## Rechtliches
+## Legal
 
-Nur für volljährige Nutzer. Die Nutzungsbedingungen von OpenRouter und des jeweiligen
-Modell-Anbieters gelten weiterhin und liegen in der Verantwortung des Nutzers.
+For adult users only. The terms of use of OpenRouter and of the respective model
+provider continue to apply and are the user's responsibility.

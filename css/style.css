@@ -31,6 +31,33 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .brand { display: flex; align-items: center; gap: 14px; }
+.topbar-actions { display: flex; align-items: center; gap: 12px; }
+.lang-switch {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.lang-switch button {
+  background: var(--panel-2);
+  color: var(--muted);
+  border: none;
+  padding: 8px 13px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.lang-switch button.active {
+  background: linear-gradient(135deg, var(--accent), #5a3fd6);
+  color: #fff;
+}
+.version-footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  padding: 10px 0 18px;
+}
 .brand-icon { font-size: 2rem; }
 .brand h1 { margin: 0; font-size: 1.35rem; letter-spacing: 0.5px; }
 .tagline { margin: 2px 0 0; color: var(--muted); font-size: 0.8rem; }

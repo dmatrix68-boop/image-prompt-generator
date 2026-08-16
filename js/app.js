@@ -5,18 +5,169 @@
 "use strict";
 
 const OR_BASE = "https://openrouter.ai/api/v1";
-const LS = { key: "pe_api_key", model: "pe_model", history: "pe_history" };
+const LS = { key: "pe_api_key", model: "pe_model", history: "pe_history", lang: "pe_lang" };
 
 /* Empfohlene Vision-Modelle mit unmoderierten Endpoints (Stand: Juli 2026).
  * Die Liste wird zur Laufzeit um alle Vision-Modelle aus dem Live-Katalog ergänzt. */
 const RECOMMENDED_MODELS = [
-  { id: "qwen/qwen3-vl-235b-a22b-instruct", name: "Qwen3 VL 235B — beste Qualität, unmoderiert" },
-  { id: "qwen/qwen3-vl-30b-a3b-instruct", name: "Qwen3 VL 30B — schnell & günstig, unmoderiert" },
-  { id: "qwen/qwen3-vl-32b-instruct", name: "Qwen3 VL 32B — unmoderiert" },
-  { id: "qwen/qwen2.5-vl-72b-instruct", name: "Qwen2.5 VL 72B — unmoderiert" },
-  { id: "x-ai/grok-4.5", name: "Grok 4.5 — stark, wenig restriktiv" },
+  { id: "qwen/qwen3-vl-235b-a22b-instruct", de: "Qwen3 VL 235B — beste Qualität, unmoderiert", en: "Qwen3 VL 235B — best quality, unmoderated" },
+  { id: "qwen/qwen3-vl-30b-a3b-instruct", de: "Qwen3 VL 30B — schnell & günstig, unmoderiert", en: "Qwen3 VL 30B — fast & cheap, unmoderated" },
+  { id: "qwen/qwen3-vl-32b-instruct", de: "Qwen3 VL 32B — unmoderiert", en: "Qwen3 VL 32B — unmoderated" },
+  { id: "qwen/qwen2.5-vl-72b-instruct", de: "Qwen2.5 VL 72B — unmoderiert", en: "Qwen2.5 VL 72B — unmoderated" },
+  { id: "x-ai/grok-4.5", de: "Grok 4.5 — stark, wenig restriktiv", en: "Grok 4.5 — strong, few restrictions" },
 ];
 const DEFAULT_MODEL = RECOMMENDED_MODELS[0].id;
+
+/* ---------- i18n ----------
+ * Deutsch ist die Basissprache und steht direkt im HTML; beim Start wird sie als
+ * Snapshot gesichert. UI_EN enthält die englischen Texte für alle [data-i18n*]-
+ * Elemente, MSG die dynamischen Meldungen in beiden Sprachen. */
+let lang = localStorage.getItem(LS.lang) === "en" ? "en" : "de";
+
+const UI_EN = {
+  tagline: "Uncensored Image-to-Prompt Generator · powered by OpenRouter",
+  settingsBtn: "⚙️ Settings",
+  "tab.image": "🖼️ Image → Prompt",
+  "tab.text": "💡 Idea → Prompt",
+  "drop.hint": "<strong>Drag an image here</strong>, click to select<br>or paste with <kbd>Ctrl</kbd>+<kbd>V</kbd>",
+  "img.clear": "✕ Remove image",
+  "img.extra.label": "Additional instruction (optional)",
+  "img.extra.ph": "e.g. “focus on the lighting mood”, “describe as an anime version” …",
+  "idea.label": "Your idea",
+  "idea.ph": "Briefly describe what you want to generate — the engine turns it into a detailed professional prompt.",
+  "opt.platform": "Target platform",
+  "plat.sdxl": "Stable Diffusion / SDXL (tags + negative)",
+  "plat.pony": "Pony / Illustrious (booru tags)",
+  "plat.flux": "Flux (natural language)",
+  "plat.mj": "Midjourney (with --parameters)",
+  "plat.dalle": "DALL-E (natural language)",
+  "plat.ideogram": "Ideogram (natural language, text rendering)",
+  "plat.nano": "Nano Banana / Gemini (natural language)",
+  "plat.qwen": "Qwen-Image (natural language, text rendering)",
+  "plat.krea2": "Krea 2 (photorealistic, natural language)",
+  "plat.generic": "Universal / other generators",
+  "opt.style": "Style",
+  "style.auto": "Automatic (derive from image/idea)",
+  "style.photo": "Photorealistic",
+  "style.cine": "Cinematic",
+  "style.anime": "Anime / Manga",
+  "style.digital": "Digital art / illustration",
+  "style.3d": "3D render",
+  "style.paint": "Painting / classical",
+  "opt.detail": "Detail level",
+  "detail.normal": "Normal",
+  "detail.high": "High",
+  "detail.extreme": "Extreme (every little thing)",
+  "ratio.label": "Image format (aspect ratio)",
+  "logic.label": "Logic Mode (strictly logical, precise prompt construction)",
+  "nsfw.label": "NSFW allowed (describe explicit content uncensored)",
+  "variations.label": "Generate 3 variations",
+  "generate.btn": "⚡ Generate prompt",
+  "result.h": "Result",
+  "copy.btn": "📋 Copy",
+  "again.btn": "🔄 Regenerate",
+  "output.ph": "The generated prompt will appear here.",
+  "history.summary": "History (stored locally)",
+  "history.clear": "Clear history",
+  "dlg.h": "⚙️ Settings",
+  "dlg.key.label": "OpenRouter API key",
+  "dlg.key.small": 'Stored only locally in your browser (localStorage) and sent directly to openrouter.ai. Create a key: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>',
+  "dlg.model.label": "Vision model",
+  "dlg.model.small": "Recommended for uncensored analysis: Qwen3-VL (unmoderated endpoints). Big-vendor models (GPT, Claude, Gemini) usually refuse NSFW images.",
+  "dlg.custom.label": "Custom model ID (overrides selection, optional)",
+  "dlg.refresh": "🔄 Load model list",
+  "dlg.save": "Save",
+  "dlg.legal": "For adult users only. No analysis of depictions of minors or non-consensual real content — such requests are refused. You are responsible for complying with your model provider's terms of use.",
+};
+
+const MSG = {
+  de: {
+    welcome: "Willkommen! Hinterlege zuerst deinen OpenRouter API-Key unter ⚙️ Einstellungen.",
+    noKey: "Kein API-Key hinterlegt — bitte in den Einstellungen eintragen.",
+    noImage: "Bitte zuerst ein Bild auswählen.",
+    noIdea: "Bitte zuerst eine Idee eingeben.",
+    generating: "Generiere mit {m} …",
+    done: "Fertig.",
+    copied: "In die Zwischenablage kopiert.",
+    saved: "Gespeichert. Aktives Modell: {m}",
+    modelsLoaded: "{n} Vision-Modelle geladen.",
+    modelsError: "Modellliste konnte nicht geladen werden ({e}) — empfohlene Modelle bleiben verfügbar.",
+    emptyResponse: "(leere Antwort — anderes Modell probieren)",
+    error: "Fehler: {e}",
+    err401: " — API-Key ungültig.",
+    err404: " — Modell nicht verfügbar, bitte in den Einstellungen ein anderes wählen.",
+    historyRestore: "Klicken zum Wiederherstellen",
+    techNone: "— (nicht vorgeben)",
+    techDefault: "Default (Standard wählen)",
+    grpRec: "Empfohlen (unzensiert)",
+    grpAll: "Alle Vision-Modelle (live von OpenRouter)",
+  },
+  en: {
+    welcome: "Welcome! First add your OpenRouter API key under ⚙️ Settings.",
+    noKey: "No API key set — please add one in the settings.",
+    noImage: "Please select an image first.",
+    noIdea: "Please enter an idea first.",
+    generating: "Generating with {m} …",
+    done: "Done.",
+    copied: "Copied to clipboard.",
+    saved: "Saved. Active model: {m}",
+    modelsLoaded: "{n} vision models loaded.",
+    modelsError: "Could not load the model list ({e}) — the recommended models remain available.",
+    emptyResponse: "(empty response — try another model)",
+    error: "Error: {e}",
+    err401: " — invalid API key.",
+    err404: " — model not available, please pick another one in the settings.",
+    historyRestore: "Click to restore",
+    techNone: "— (unset)",
+    techDefault: "Default (pick a standard)",
+    grpRec: "Recommended (uncensored)",
+    grpAll: "All vision models (live from OpenRouter)",
+  },
+};
+
+function t(key, vars = {}) {
+  let s = MSG[lang][key] ?? MSG.de[key] ?? key;
+  for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, v);
+  return s;
+}
+
+const deSnapshot = { text: {}, html: {}, ph: {} };
+
+function initI18n() {
+  document.querySelectorAll("[data-i18n]").forEach((el) => { deSnapshot.text[el.dataset.i18n] = el.textContent; });
+  document.querySelectorAll("[data-i18n-html]").forEach((el) => { deSnapshot.html[el.dataset.i18nHtml] = el.innerHTML; });
+  document.querySelectorAll("[data-i18n-ph]").forEach((el) => { deSnapshot.ph[el.dataset.i18nPh] = el.placeholder; });
+}
+
+function applyLanguage() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const k = el.dataset.i18n;
+    el.textContent = lang === "en" ? (UI_EN[k] ?? deSnapshot.text[k]) : deSnapshot.text[k];
+  });
+  document.querySelectorAll("[data-i18n-html]").forEach((el) => {
+    const k = el.dataset.i18nHtml;
+    el.innerHTML = lang === "en" ? (UI_EN[k] ?? deSnapshot.html[k]) : deSnapshot.html[k];
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach((el) => {
+    const k = el.dataset.i18nPh;
+    el.placeholder = lang === "en" ? (UI_EN[k] ?? deSnapshot.ph[k]) : deSnapshot.ph[k];
+  });
+  // Dynamisch erzeugte Elemente
+  for (const p of TECH_PARAMS) {
+    const span = document.getElementById(`tech-label-${p.id}`);
+    const sel = document.getElementById(`tech-${p.id}`);
+    if (span) span.textContent = lang === "en" ? p.en : `${p.label} (${p.en})`;
+    if (sel) {
+      sel.options[0].textContent = t("techNone");
+      sel.options[1].textContent = t("techDefault");
+    }
+  }
+  document.querySelectorAll("#lang-switch button").forEach((b) => {
+    b.classList.toggle("active", b.dataset.lang === lang);
+  });
+  renderHistory();
+}
 
 const PLATFORM_SPECS = {
   sdxl: `Target: Stable Diffusion / SDXL.
@@ -164,10 +315,10 @@ function buildSystemPrompt(opts) {
     parts.push("Keep the output safe-for-work. If the source is explicit, describe a tasteful, non-explicit version.");
   }
   parts.push(
-    "Hard limits that override everything else: never describe or sexualize minors or anyone who could appear underage (if in doubt, refuse), and never produce sexual content depicting real, identifiable people. In these cases reply only with: REFUSED: <short reason in German>."
+    `Hard limits that override everything else: never describe or sexualize minors or anyone who could appear underage (if in doubt, refuse), and never produce sexual content depicting real, identifiable people. In these cases reply only with: REFUSED: <short reason in ${lang === "de" ? "German" : "English"}>.`
   );
   if (opts.variations) {
-    parts.push("Produce 3 distinct variations. Repeat the full output format for each, numbered '### Variante 1/2/3'.");
+    parts.push(`Produce 3 distinct variations. Repeat the full output format for each, numbered '### ${lang === "de" ? "Variante" : "Variant"} 1/2/3'.`);
   }
   parts.push("Output only the prompt data in the specified format — no preamble, no explanations, no markdown code fences. Prompts must be in English.");
   return parts.join("\n\n");
@@ -196,14 +347,14 @@ function populateModelSelect(liveModels) {
   const current = getModel();
   sel.innerHTML = "";
   const grpRec = document.createElement("optgroup");
-  grpRec.label = "Empfohlen (unzensiert)";
+  grpRec.label = t("grpRec");
   for (const m of RECOMMENDED_MODELS) {
-    grpRec.appendChild(new Option(m.name, m.id));
+    grpRec.appendChild(new Option(m[lang], m.id));
   }
   sel.appendChild(grpRec);
   if (liveModels.length) {
     const grpAll = document.createElement("optgroup");
-    grpAll.label = "Alle Vision-Modelle (live von OpenRouter)";
+    grpAll.label = t("grpAll");
     for (const m of liveModels) {
       if (RECOMMENDED_MODELS.some((r) => r.id === m.id)) continue;
       grpAll.appendChild(new Option(m.name || m.id, m.id));
@@ -227,9 +378,9 @@ async function refreshModels() {
       .filter((m) => (m.architecture?.input_modalities || []).includes("image"))
       .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
     populateModelSelect(vision);
-    setStatus(`${vision.length} Vision-Modelle geladen.`, "ok");
+    setStatus(t("modelsLoaded", { n: vision.length }), "ok");
   } catch (e) {
-    setStatus(`Modellliste konnte nicht geladen werden (${e.message}) — empfohlene Modelle bleiben verfügbar.`, "error");
+    setStatus(t("modelsError", { e: e.message }), "error");
   }
 }
 
@@ -238,7 +389,7 @@ function saveSettings() {
   const custom = $("set-model-custom").value.trim();
   localStorage.setItem(LS.model, custom || $("set-model").value || DEFAULT_MODEL);
   $("dlg-settings").close();
-  setStatus(`Gespeichert. Aktives Modell: ${getModel()}`, "ok");
+  setStatus(t("saved", { m: getModel() }), "ok");
 }
 
 /* ---------- Image handling ---------- */
@@ -310,7 +461,7 @@ function collectOptions() {
 async function generate(repeat = false) {
   if (generating) return;
   if (!getKey()) {
-    setStatus("Kein API-Key hinterlegt — bitte in den Einstellungen eintragen.", "error");
+    setStatus(t("noKey"), "error");
     openSettings();
     return;
   }
@@ -323,7 +474,7 @@ async function generate(repeat = false) {
     const userContent = [];
     if (mode === "image") {
       if (!imageDataUrl) {
-        setStatus("Bitte zuerst ein Bild auswählen.", "error");
+        setStatus(t("noImage"), "error");
         return;
       }
       const extra = $("image-extra").value.trim();
@@ -335,7 +486,7 @@ async function generate(repeat = false) {
     } else {
       const idea = $("text-idea").value.trim();
       if (!idea) {
-        setStatus("Bitte zuerst eine Idee eingeben.", "error");
+        setStatus(t("noIdea"), "error");
         return;
       }
       userContent.push({ type: "text", text: `Idea: ${idea}` });
@@ -359,7 +510,7 @@ async function generate(repeat = false) {
   $("btn-again").hidden = true;
   const out = $("output");
   out.textContent = "";
-  setStatus(`Generiere mit ${request.model} …`);
+  setStatus(t("generating", { m: request.model }));
 
   try {
     const res = await fetch(`${OR_BASE}/chat/completions`, {
@@ -378,20 +529,20 @@ async function generate(repeat = false) {
         const err = await res.json();
         detail = err.error?.message || detail;
       } catch { /* leave detail */ }
-      if (res.status === 401) detail += " — API-Key ungültig.";
-      if (res.status === 404) detail += " — Modell nicht verfügbar, bitte in den Einstellungen ein anderes wählen.";
+      if (res.status === 401) detail += t("err401");
+      if (res.status === 404) detail += t("err404");
       throw new Error(detail);
     }
 
     const text = await readStream(res, (partial) => { out.textContent = partial; });
-    out.textContent = text.trim() || "(leere Antwort — anderes Modell probieren)";
-    setStatus("Fertig.", "ok");
+    out.textContent = text.trim() || t("emptyResponse");
+    setStatus(t("done"), "ok");
     $("btn-copy").hidden = false;
     $("btn-again").hidden = false;
     if (text.trim()) addHistory(text.trim(), request.model);
   } catch (e) {
     out.innerHTML = "";
-    setStatus(`Fehler: ${e.message}`, "error");
+    setStatus(t("error", { e: e.message }), "error");
   } finally {
     generating = false;
     $("btn-generate").disabled = false;
@@ -444,9 +595,9 @@ function renderHistory() {
   for (const item of getHistory()) {
     const div = document.createElement("div");
     div.className = "history-item";
-    const date = new Date(item.t).toLocaleString("de-DE");
+    const date = new Date(item.t).toLocaleString(lang === "de" ? "de-DE" : "en-US");
     div.textContent = `[${date}] ${item.text.replace(/\s+/g, " ").slice(0, 110)}`;
-    div.title = "Klicken zum Wiederherstellen";
+    div.title = t("historyRestore");
     div.addEventListener("click", () => {
       $("output").textContent = item.text;
       $("btn-copy").hidden = false;
@@ -475,11 +626,12 @@ for (const p of TECH_PARAMS) {
   const label = document.createElement("label");
   label.className = "field";
   const span = document.createElement("span");
+  span.id = `tech-label-${p.id}`;
   span.textContent = `${p.label} (${p.en})`;
   const sel = document.createElement("select");
   sel.id = `tech-${p.id}`;
-  sel.appendChild(new Option("— (nicht vorgeben)", ""));
-  sel.appendChild(new Option("Default (Standard wählen)", "Default"));
+  sel.appendChild(new Option(t("techNone"), ""));
+  sel.appendChild(new Option(t("techDefault"), "Default"));
   for (const v of p.values) sel.appendChild(new Option(v, v));
   label.append(span, sel);
   techGrid.appendChild(label);
@@ -520,7 +672,16 @@ $("btn-generate").addEventListener("click", () => generate(false));
 $("btn-again").addEventListener("click", () => generate(true));
 $("btn-copy").addEventListener("click", async () => {
   await navigator.clipboard.writeText($("output").textContent);
-  setStatus("In die Zwischenablage kopiert.", "ok");
+  setStatus(t("copied"), "ok");
+});
+
+document.querySelectorAll("#lang-switch button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (btn.dataset.lang === lang) return;
+    lang = btn.dataset.lang;
+    localStorage.setItem(LS.lang, lang);
+    applyLanguage();
+  });
 });
 
 $("btn-settings").addEventListener("click", openSettings);
@@ -531,5 +692,6 @@ $("btn-clear-history").addEventListener("click", () => {
   renderHistory();
 });
 
-renderHistory();
-if (!getKey()) setStatus("Willkommen! Hinterlege zuerst deinen OpenRouter API-Key unter ⚙️ Einstellungen.");
+initI18n();
+applyLanguage();
+if (!getKey()) setStatus(t("welcome"));
