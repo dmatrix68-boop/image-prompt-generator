@@ -14,7 +14,8 @@ kein Modell ist hartkodiert, die Modellliste wird live vom OpenRouter-Katalog ge
 - **Idee → Prompt**: Kurze Idee eingeben, die Engine baut daraus einen Profi-Prompt.
 - **Ziel-Plattformen**: SDXL (Tags + Negative Prompt), Pony/Illustrious (Booru-Tags
   inkl. score-/rating-Tags), Flux (Fließtext), Midjourney (inkl. `--ar`/`--stylize`),
-  universell.
+  DALL-E, Ideogram, Nano Banana/Gemini, Qwen-Image (mit Text-Rendering), Krea 2
+  (fotorealistisch), universell.
 - **Bildformate**: Aspect-Ratio-Auswahl wie im Original (Auto, 1:1, 16:9, 9:16, 4:3,
   3:2) — bei Midjourney als `--ar`, bei SDXL/Pony mit passender Auflösungsempfehlung.
 - **Technical Parameters** (wie im Original, ausklappbar): Logic Mode, Camera Angle,

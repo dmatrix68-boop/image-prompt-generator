@@ -60,6 +60,19 @@ Output ONE richly detailed, conversational natural-language description of the d
 Format exactly:
 PROMPT:
 <paragraph>`,
+  "qwen-image": `Target: Qwen-Image.
+Output ONE detailed natural-language prompt paragraph (subject, appearance, pose, clothing/state of dress, setting, lighting, composition, style). Qwen-Image excels at rendering text: if any text/lettering should appear in the image, put the exact wording in double quotes inside the prompt.
+Then a short negative prompt with unwanted elements.
+Format exactly:
+PROMPT:
+<paragraph>
+NEGATIVE:
+<negative prompt>`,
+  krea2: `Target: Krea 2.
+Output ONE flowing natural-language prompt paragraph optimized for photorealistic output: concrete subject and scene description plus photographic language (camera, lens, film stock/look, lighting setup, color grade). Avoid generic "AI look" buzzwords like "masterpiece" or "8k"; describe the aesthetic precisely instead. No tag lists, no negative prompt.
+Format exactly:
+PROMPT:
+<paragraph>`,
   generic: `Target: a general-purpose AI image generator.
 Output ONE detailed natural-language prompt paragraph covering subject, appearance, pose, clothing/state of dress, setting, lighting, composition and style.
 Format exactly:
