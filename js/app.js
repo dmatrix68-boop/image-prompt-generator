@@ -99,7 +99,7 @@ const UI_EN = {
   "prov.openrouter": "OpenRouter (cloud, API key required)",
   "prov.ollama": "Ollama (local, no API key)",
   "dlg.ollama.label": "Ollama address",
-  "dlg.ollama.small": 'Ollama must be running (<code>ollama serve</code>) and must allow browser access — set <code>OLLAMA_ORIGINS=*</code>. Pull the model first, e.g. <code>ollama pull qwen2.5vl:7b</code>.',
+  "dlg.ollama.small": 'Ollama must be running (<code>ollama serve</code>) with a model pulled (<code>ollama pull qwen2.5vl:7b</code>). If this page is opened over <code>http://localhost</code>, nothing else is needed — <code>OLLAMA_ORIGINS</code> is only required for a different address.',
   "dlg.key.label": "OpenRouter API key",
   "dlg.key.small": 'Stored only locally in your browser (localStorage) and sent directly to openrouter.ai. Create a key: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>',
   "dlg.model.label": "Vision model",
@@ -124,13 +124,17 @@ const MSG = {
     modelsError: "Modellliste konnte nicht geladen werden ({e}) — empfohlene Modelle bleiben verfügbar.",
     ollamaLoaded: "{n} lokale Modelle gefunden, davon {v} mit Bild-Unterstützung.",
     ollamaEmpty: "Ollama läuft, aber es ist noch kein Modell installiert — z.B. „ollama pull qwen2.5vl:7b“ ausführen.",
-    ollamaError: "Ollama unter {u} nicht erreichbar ({e}). Prüfen: läuft „ollama serve“, und ist OLLAMA_ORIGINS=* gesetzt?",
+    ollamaError: "Ollama unter {u} nicht erreichbar ({e}). {h}",
+    hintMixed: "Diese Seite läuft über https, Ollama aber nur über http — der Browser blockiert das als „Mixed Content“, noch bevor Ollama gefragt wird. Keine Ollama-Einstellung hilft dagegen: Seite lokal über http://localhost öffnen.",
+    hintFile: "Diese Seite wurde direkt aus dem Dateisystem geöffnet (file://); der Browser sendet dann die Origin „null“, die Ollama ablehnt. Seite über einen lokalen Server ausliefern, z.B. „python3 -m http.server 8080“.",
+    hintOrigin: "Diese Seite läuft unter {o}; Ollama erlaubt von sich aus nur localhost. Ollama mit OLLAMA_ORIGINS={o} starten — oder die Seite über http://localhost öffnen.",
+    hintGeneric: "Läuft „ollama serve“? Blockieren evtl. Browser-Erweiterungen (Adblocker, Privacy-Tools) lokale Anfragen?",
     emptyResponse: "(leere Antwort — anderes Modell probieren)",
     error: "Fehler: {e}",
     err401: " — API-Key ungültig.",
     err404: " — Modell nicht verfügbar, bitte in den Einstellungen ein anderes wählen.",
     errOllama404: " — Modell nicht installiert. Zuerst „ollama pull {m}“ ausführen.",
-    errOllamaNet: " — Ollama nicht erreichbar. Prüfen: läuft „ollama serve“, und ist OLLAMA_ORIGINS=* gesetzt?",
+    errOllamaNet: " — Ollama nicht erreichbar. {h}",
     historyRestore: "Klicken zum Wiederherstellen",
     techNone: "— (nicht vorgeben)",
     techDefault: "Default (Standard wählen)",
@@ -160,13 +164,17 @@ const MSG = {
     modelsError: "Could not load the model list ({e}) — the recommended models remain available.",
     ollamaLoaded: "Found {n} local models, {v} of them with image support.",
     ollamaEmpty: "Ollama is running but no model is installed yet — run e.g. “ollama pull qwen2.5vl:7b”.",
-    ollamaError: "Ollama not reachable at {u} ({e}). Check: is “ollama serve” running, and is OLLAMA_ORIGINS=* set?",
+    ollamaError: "Ollama not reachable at {u} ({e}). {h}",
+    hintMixed: "This page is served over https but Ollama only speaks http — the browser blocks that as mixed content before Ollama is ever asked. No Ollama setting fixes it: open the page locally over http://localhost.",
+    hintFile: "This page was opened straight from the file system (file://); the browser then sends origin “null”, which Ollama rejects. Serve the page from a local server instead, e.g. “python3 -m http.server 8080”.",
+    hintOrigin: "This page runs at {o}; Ollama only allows localhost by default. Start Ollama with OLLAMA_ORIGINS={o} — or open the page over http://localhost.",
+    hintGeneric: "Is “ollama serve” running? Could a browser extension (ad blocker, privacy tool) be blocking local requests?",
     emptyResponse: "(empty response — try another model)",
     error: "Error: {e}",
     err401: " — invalid API key.",
     err404: " — model not available, please pick another one in the settings.",
     errOllama404: " — model not installed. Run “ollama pull {m}” first.",
-    errOllamaNet: " — Ollama not reachable. Check: is “ollama serve” running, and is OLLAMA_ORIGINS=* set?",
+    errOllamaNet: " — Ollama not reachable. {h}",
     historyRestore: "Click to restore",
     techNone: "— (unset)",
     techDefault: "Default (pick a standard)",
@@ -186,7 +194,9 @@ const MSG = {
 
 function t(key, vars = {}) {
   let s = MSG[lang][key] ?? MSG.de[key] ?? key;
-  for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, v);
+  // replaceAll: Platzhalter dürfen mehrfach vorkommen. Funktion als Ersatz, damit
+  // "$"-Sequenzen im Wert (z.B. in einer Modell-ID) nicht als Muster gedeutet werden.
+  for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, () => v);
   return s;
 }
 
@@ -408,6 +418,19 @@ function normalizeUrl(u) {
 
 function getOllamaUrl() { return normalizeUrl(localStorage.getItem(LS.ollamaUrl)) || OLLAMA_DEFAULT_URL; }
 
+const LOCAL_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0", "[::1]", "::1"];
+
+/* Ollama erlaubt localhost/127.0.0.1/0.0.0.0 auf jedem Port bereits ab Werk
+ * (envconfig.AllowedOrigins). Ein fehlgeschlagener Zugriff hat deshalb fast immer
+ * eine Ursache im Kontext der Seite, nicht in Ollamas Konfiguration — und die lässt
+ * sich hier benennen, statt pauschal OLLAMA_ORIGINS zu empfehlen. */
+function ollamaHint(url) {
+  if (location.protocol === "file:") return t("hintFile");
+  if (location.protocol === "https:" && /^http:\/\//i.test(url)) return t("hintMixed");
+  if (!LOCAL_HOSTS.includes(location.hostname)) return t("hintOrigin", { o: location.origin });
+  return t("hintGeneric");
+}
+
 function modelFor(provider) {
   return provider === "ollama"
     ? localStorage.getItem(LS.ollamaModel) || DEFAULT_OLLAMA_MODEL
@@ -505,7 +528,8 @@ async function refreshModels() {
     else await refreshOpenRouterModels();
   } catch (e) {
     populateModelSelect([recommendedGroup()]);
-    setStatus(ollama ? t("ollamaError", { u: uiOllamaUrl(), e: e.message }) : t("modelsError", { e: e.message }), "error");
+    const url = uiOllamaUrl();
+    setStatus(ollama ? t("ollamaError", { u: url, e: e.message, h: ollamaHint(url) }) : t("modelsError", { e: e.message }), "error");
   }
 }
 
@@ -713,7 +737,7 @@ async function generate(repeat = false) {
       });
     } catch (netErr) {
       // Bei Ollama fast immer: Dienst läuft nicht oder CORS blockt den Browser.
-      throw new Error(netErr.message + (ollama ? t("errOllamaNet") : ""));
+      throw new Error(netErr.message + (ollama ? t("errOllamaNet", { h: ollamaHint(getOllamaUrl()) }) : ""));
     }
 
     if (!res.ok) {

@@ -164,7 +164,7 @@
     <label class="field" id="row-ollama" hidden>
       <span data-i18n="dlg.ollama.label">Ollama-Adresse</span>
       <input type="text" id="set-ollama-url" placeholder="http://localhost:11434" autocomplete="off" spellcheck="false">
-      <small data-i18n-html="dlg.ollama.small">Ollama muss laufen (<code>ollama serve</code>) und Browser-Zugriffe erlauben — dafür <code>OLLAMA_ORIGINS=*</code> setzen. Modell vorher laden, z.B. <code>ollama pull qwen2.5vl:7b</code>.</small>
+      <small data-i18n-html="dlg.ollama.small">Ollama muss laufen (<code>ollama serve</code>) und ein Modell geladen sein (<code>ollama pull qwen2.5vl:7b</code>). Wird diese Seite über <code>http://localhost</code> aufgerufen, ist keine weitere Einstellung nötig — <code>OLLAMA_ORIGINS</code> braucht es nur bei einer anderen Adresse.</small>
     </label>
     <label class="field">
       <span data-i18n="dlg.model.label">Vision-Modell</span>
