@@ -1,11 +1,23 @@
-/* The Prompt Engine — Uncensored (OpenRouter Edition)
- * Reines Frontend: API-Key & Verlauf bleiben im Browser (localStorage),
- * Requests gehen direkt an https://openrouter.ai — kein eigener Server nötig. */
+/* The Prompt Engine — Uncensored (OpenRouter / Ollama Edition)
+ * Reines Frontend: API-Key, Einstellungen & Verlauf bleiben im Browser (localStorage).
+ * Requests gehen direkt an den gewählten Anbieter — kein eigener Server nötig:
+ *   • OpenRouter: Cloud, API-Key erforderlich (https://openrouter.ai)
+ *   • Ollama:     lokal auf dem eigenen Rechner, kein API-Key, keine Kosten,
+ *                 kein Datenabfluss (http://localhost:11434) */
 
 "use strict";
 
 const OR_BASE = "https://openrouter.ai/api/v1";
-const LS = { key: "pe_api_key", model: "pe_model", history: "pe_history", lang: "pe_lang" };
+const OLLAMA_DEFAULT_URL = "http://localhost:11434";
+const LS = {
+  key: "pe_api_key",
+  model: "pe_model",
+  history: "pe_history",
+  lang: "pe_lang",
+  provider: "pe_provider",
+  ollamaUrl: "pe_ollama_url",
+  ollamaModel: "pe_ollama_model",
+};
 
 /* Empfohlene Vision-Modelle mit unmoderierten Endpoints (Stand: Juli 2026).
  * Die Liste wird zur Laufzeit um alle Vision-Modelle aus dem Live-Katalog ergänzt. */
@@ -18,6 +30,19 @@ const RECOMMENDED_MODELS = [
 ];
 const DEFAULT_MODEL = RECOMMENDED_MODELS[0].id;
 
+/* Empfohlene lokale Ollama-Modelle mit Bildverständnis. Müssen vorher per
+ * `ollama pull <id>` geladen werden; die tatsächlich installierten Modelle
+ * kommen zur Laufzeit aus /api/tags dazu. */
+const RECOMMENDED_OLLAMA = [
+  { id: "qwen2.5vl:7b", de: "Qwen2.5 VL 7B — schnell, kaum moderiert (~6 GB)", en: "Qwen2.5 VL 7B — fast, barely moderated (~6 GB)" },
+  { id: "qwen2.5vl:32b", de: "Qwen2.5 VL 32B — beste Qualität (~21 GB VRAM)", en: "Qwen2.5 VL 32B — best quality (~21 GB VRAM)" },
+  { id: "llava:13b", de: "LLaVA 13B — Klassiker, wenig restriktiv (~8 GB)", en: "LLaVA 13B — classic, few restrictions (~8 GB)" },
+  { id: "minicpm-v:8b", de: "MiniCPM-V 8B — genügsam, gute Detailtreue (~5 GB)", en: "MiniCPM-V 8B — lightweight, good detail (~5 GB)" },
+  { id: "llama3.2-vision:11b", de: "Llama 3.2 Vision 11B — solide, moderiert (~8 GB)", en: "Llama 3.2 Vision 11B — solid, moderated (~8 GB)" },
+  { id: "gemma3:12b", de: "Gemma 3 12B — multimodal, moderiert (~8 GB)", en: "Gemma 3 12B — multimodal, moderated (~8 GB)" },
+];
+const DEFAULT_OLLAMA_MODEL = RECOMMENDED_OLLAMA[0].id;
+
 /* ---------- i18n ----------
  * Deutsch ist die Basissprache und steht direkt im HTML; beim Start wird sie als
  * Snapshot gesichert. UI_EN enthält die englischen Texte für alle [data-i18n*]-
@@ -25,7 +50,7 @@ const DEFAULT_MODEL = RECOMMENDED_MODELS[0].id;
 let lang = localStorage.getItem(LS.lang) === "en" ? "en" : "de";
 
 const UI_EN = {
-  tagline: "Uncensored Image-to-Prompt Generator · powered by OpenRouter",
+  tagline: "Uncensored Image-to-Prompt Generator · powered by OpenRouter or Ollama",
   settingsBtn: "⚙️ Settings",
   "tab.image": "🖼️ Image → Prompt",
   "tab.text": "💡 Idea → Prompt",
@@ -70,10 +95,14 @@ const UI_EN = {
   "history.summary": "History (stored locally)",
   "history.clear": "Clear history",
   "dlg.h": "⚙️ Settings",
+  "dlg.provider.label": "Provider",
+  "prov.openrouter": "OpenRouter (cloud, API key required)",
+  "prov.ollama": "Ollama (local, no API key)",
+  "dlg.ollama.label": "Ollama address",
+  "dlg.ollama.small": 'Ollama must be running (<code>ollama serve</code>) and must allow browser access — set <code>OLLAMA_ORIGINS=*</code>. Pull the model first, e.g. <code>ollama pull qwen2.5vl:7b</code>.',
   "dlg.key.label": "OpenRouter API key",
   "dlg.key.small": 'Stored only locally in your browser (localStorage) and sent directly to openrouter.ai. Create a key: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>',
   "dlg.model.label": "Vision model",
-  "dlg.model.small": "Recommended for uncensored analysis: Qwen3-VL (unmoderated endpoints). Big-vendor models (GPT, Claude, Gemini) usually refuse NSFW images.",
   "dlg.custom.label": "Custom model ID (overrides selection, optional)",
   "dlg.refresh": "🔄 Load model list",
   "dlg.save": "Save",
@@ -82,7 +111,8 @@ const UI_EN = {
 
 const MSG = {
   de: {
-    welcome: "Willkommen! Hinterlege zuerst deinen OpenRouter API-Key unter ⚙️ Einstellungen.",
+    welcome: "Willkommen! Wähle unter ⚙️ Einstellungen einen Anbieter: OpenRouter (API-Key nötig) oder Ollama (lokal, ohne Key).",
+    welcomeOllama: "Bereit — lokales Modell: {m}. Läuft Ollama nicht, in den Einstellungen die Modellliste laden.",
     noKey: "Kein API-Key hinterlegt — bitte in den Einstellungen eintragen.",
     noImage: "Bitte zuerst ein Bild auswählen.",
     noIdea: "Bitte zuerst eine Idee eingeben.",
@@ -92,18 +122,33 @@ const MSG = {
     saved: "Gespeichert. Aktives Modell: {m}",
     modelsLoaded: "{n} Vision-Modelle geladen.",
     modelsError: "Modellliste konnte nicht geladen werden ({e}) — empfohlene Modelle bleiben verfügbar.",
+    ollamaLoaded: "{n} lokale Modelle gefunden, davon {v} mit Bild-Unterstützung.",
+    ollamaEmpty: "Ollama läuft, aber es ist noch kein Modell installiert — z.B. „ollama pull qwen2.5vl:7b“ ausführen.",
+    ollamaError: "Ollama unter {u} nicht erreichbar ({e}). Prüfen: läuft „ollama serve“, und ist OLLAMA_ORIGINS=* gesetzt?",
     emptyResponse: "(leere Antwort — anderes Modell probieren)",
     error: "Fehler: {e}",
     err401: " — API-Key ungültig.",
     err404: " — Modell nicht verfügbar, bitte in den Einstellungen ein anderes wählen.",
+    errOllama404: " — Modell nicht installiert. Zuerst „ollama pull {m}“ ausführen.",
+    errOllamaNet: " — Ollama nicht erreichbar. Prüfen: läuft „ollama serve“, und ist OLLAMA_ORIGINS=* gesetzt?",
     historyRestore: "Klicken zum Wiederherstellen",
     techNone: "— (nicht vorgeben)",
     techDefault: "Default (Standard wählen)",
     grpRec: "Empfohlen (unzensiert)",
     grpAll: "Alle Vision-Modelle (live von OpenRouter)",
+    switchedOllama: "Anbieter: Ollama (lokal) · Modell: {m}",
+    switchedOR: "Anbieter: OpenRouter (Cloud) · Modell: {m}",
+    customPhOR: "z.B. qwen/qwen3-vl-235b-a22b-instruct",
+    customPhOllama: "z.B. qwen2.5vl:7b",
+    grpRecOllama: "Empfohlen (ggf. erst per „ollama pull“ laden)",
+    grpOllamaVision: "Installiert — mit Bild-Unterstützung",
+    grpOllamaText: "Installiert — nur Text (für „Idee → Prompt“)",
+    modelSmallOR: "Empfohlen für unzensierte Analyse: Qwen3-VL (unmoderierte Endpoints). Große Anbieter-Modelle (GPT, Claude, Gemini) verweigern NSFW-Bilder meist.",
+    modelSmallOllama: "Für „Bild → Prompt“ ist ein Vision-Modell nötig (z.B. qwen2.5vl, llava, minicpm-v). Reine Text-Modelle funktionieren nur im Modus „Idee → Prompt“.",
   },
   en: {
-    welcome: "Welcome! First add your OpenRouter API key under ⚙️ Settings.",
+    welcome: "Welcome! Pick a provider under ⚙️ Settings: OpenRouter (API key required) or Ollama (local, no key).",
+    welcomeOllama: "Ready — local model: {m}. If Ollama isn't running, load the model list in the settings.",
     noKey: "No API key set — please add one in the settings.",
     noImage: "Please select an image first.",
     noIdea: "Please enter an idea first.",
@@ -113,15 +158,29 @@ const MSG = {
     saved: "Saved. Active model: {m}",
     modelsLoaded: "{n} vision models loaded.",
     modelsError: "Could not load the model list ({e}) — the recommended models remain available.",
+    ollamaLoaded: "Found {n} local models, {v} of them with image support.",
+    ollamaEmpty: "Ollama is running but no model is installed yet — run e.g. “ollama pull qwen2.5vl:7b”.",
+    ollamaError: "Ollama not reachable at {u} ({e}). Check: is “ollama serve” running, and is OLLAMA_ORIGINS=* set?",
     emptyResponse: "(empty response — try another model)",
     error: "Error: {e}",
     err401: " — invalid API key.",
     err404: " — model not available, please pick another one in the settings.",
+    errOllama404: " — model not installed. Run “ollama pull {m}” first.",
+    errOllamaNet: " — Ollama not reachable. Check: is “ollama serve” running, and is OLLAMA_ORIGINS=* set?",
     historyRestore: "Click to restore",
     techNone: "— (unset)",
     techDefault: "Default (pick a standard)",
     grpRec: "Recommended (uncensored)",
     grpAll: "All vision models (live from OpenRouter)",
+    switchedOllama: "Provider: Ollama (local) · model: {m}",
+    switchedOR: "Provider: OpenRouter (cloud) · model: {m}",
+    customPhOR: "e.g. qwen/qwen3-vl-235b-a22b-instruct",
+    customPhOllama: "e.g. qwen2.5vl:7b",
+    grpRecOllama: "Recommended (pull with “ollama pull” if missing)",
+    grpOllamaVision: "Installed — with image support",
+    grpOllamaText: "Installed — text only (for “Idea → Prompt”)",
+    modelSmallOR: "Recommended for uncensored analysis: Qwen3-VL (unmoderated endpoints). Big-vendor models (GPT, Claude, Gemini) usually refuse NSFW images.",
+    modelSmallOllama: "“Image → Prompt” needs a vision model (e.g. qwen2.5vl, llava, minicpm-v). Text-only models work in “Idea → Prompt” mode only.",
   },
 };
 
@@ -166,6 +225,7 @@ function applyLanguage() {
   document.querySelectorAll("#lang-switch button").forEach((b) => {
     b.classList.toggle("active", b.dataset.lang === lang);
   });
+  applyProviderUI();
   renderHistory();
 }
 
@@ -331,35 +391,104 @@ let imageDataUrl = null;
 let lastRequest = null;
 let generating = false;
 
-/* ---------- Settings ---------- */
+/* ---------- Anbieter & Settings ----------
+ * OpenRouter und Ollama sprechen beide dasselbe OpenAI-kompatible
+ * /chat/completions-Protokoll (Ollama stellt es unter /v1 bereit), inklusive
+ * Bildern als data:-URL und SSE-Streaming — der Generierungspfad bleibt daher
+ * für beide identisch, nur Basis-URL, Auth und Modellliste unterscheiden sich. */
+function getProvider() { return localStorage.getItem(LS.provider) === "ollama" ? "ollama" : "openrouter"; }
+function isOllama() { return getProvider() === "ollama"; }
 function getKey() { return localStorage.getItem(LS.key) || ""; }
-function getModel() { return localStorage.getItem(LS.model) || DEFAULT_MODEL; }
+
+function normalizeUrl(u) {
+  const v = (u || "").trim().replace(/\/+$/, "");
+  if (!v) return "";
+  return /^https?:\/\//i.test(v) ? v : `http://${v}`;
+}
+
+function getOllamaUrl() { return normalizeUrl(localStorage.getItem(LS.ollamaUrl)) || OLLAMA_DEFAULT_URL; }
+
+function modelFor(provider) {
+  return provider === "ollama"
+    ? localStorage.getItem(LS.ollamaModel) || DEFAULT_OLLAMA_MODEL
+    : localStorage.getItem(LS.model) || DEFAULT_MODEL;
+}
+function getModel() { return modelFor(getProvider()); }
+function apiBase() { return isOllama() ? `${getOllamaUrl()}/v1` : OR_BASE; }
+
+/* Solange der Dialog offen ist, zählt die (noch ungespeicherte) Auswahl darin. */
+function uiProvider() {
+  return $("dlg-settings").open ? ($("set-provider").value === "ollama" ? "ollama" : "openrouter") : getProvider();
+}
+function uiOllamaUrl() {
+  return ($("dlg-settings").open && normalizeUrl($("set-ollama-url").value)) || getOllamaUrl();
+}
+
+function applyProviderUI() {
+  const ollama = uiProvider() === "ollama";
+  $("row-key").hidden = ollama;
+  $("row-ollama").hidden = !ollama;
+  $("set-model-small").textContent = t(ollama ? "modelSmallOllama" : "modelSmallOR");
+  $("set-model-custom").placeholder = t(ollama ? "customPhOllama" : "customPhOR");
+}
+
+/* Kopfzeilen-Umschalter: markiert den aktiven Anbieter. */
+function updateProviderSwitch() {
+  const p = getProvider();
+  document.querySelectorAll("#provider-switch button").forEach((b) => {
+    b.classList.toggle("active", b.dataset.provider === p);
+  });
+}
+
+/* Direktes Umschalten aus der Kopfzeile — Modell, Key und Ollama-Adresse
+ * bleiben je Anbieter getrennt gespeichert, ein Wechsel verliert also nichts. */
+function setProvider(provider) {
+  if (provider === getProvider()) return;
+  localStorage.setItem(LS.provider, provider === "ollama" ? "ollama" : "openrouter");
+  $("set-provider").value = getProvider();
+  updateProviderSwitch();
+  applyProviderUI();
+  lastRequest = null;
+  if (isOllama()) setStatus(t("switchedOllama", { m: getModel() }), "ok");
+  else if (!getKey()) { setStatus(t("noKey"), "error"); openSettings(); return; }
+  else setStatus(t("switchedOR", { m: getModel() }), "ok");
+}
 
 function openSettings() {
+  $("set-provider").value = getProvider();
   $("set-key").value = getKey();
-  populateModelSelect([]);
+  $("set-ollama-url").value = getOllamaUrl();
   $("dlg-settings").showModal();
+  applyProviderUI();
+  populateModelSelect([recommendedGroup()]);
   refreshModels();
 }
 
-function populateModelSelect(liveModels) {
+function recommendedGroup() {
+  const ollama = uiProvider() === "ollama";
+  const list = ollama ? RECOMMENDED_OLLAMA : RECOMMENDED_MODELS;
+  return { label: t(ollama ? "grpRecOllama" : "grpRec"), items: list.map((m) => ({ id: m.id, name: m[lang] })) };
+}
+
+/* groups: [{ label, items: [{ id, name }] }] — leere Gruppen entfallen, Duplikate
+ * werden übersprungen. Passt das aktive Modell zu keinem Eintrag, landet es im
+ * Feld für die eigene Modell-ID. */
+function populateModelSelect(groups) {
   const sel = $("set-model");
-  const current = getModel();
+  const current = modelFor(uiProvider());
+  const seen = new Set();
   sel.innerHTML = "";
-  const grpRec = document.createElement("optgroup");
-  grpRec.label = t("grpRec");
-  for (const m of RECOMMENDED_MODELS) {
-    grpRec.appendChild(new Option(m[lang], m.id));
-  }
-  sel.appendChild(grpRec);
-  if (liveModels.length) {
-    const grpAll = document.createElement("optgroup");
-    grpAll.label = t("grpAll");
-    for (const m of liveModels) {
-      if (RECOMMENDED_MODELS.some((r) => r.id === m.id)) continue;
-      grpAll.appendChild(new Option(m.name || m.id, m.id));
-    }
-    sel.appendChild(grpAll);
+  for (const g of groups) {
+    const items = g.items.filter((it) => {
+      if (seen.has(it.id)) return false;
+      seen.add(it.id);
+      return true;
+    });
+    if (!items.length) continue;
+    const og = document.createElement("optgroup");
+    og.label = g.label;
+    for (const it of items) og.appendChild(new Option(it.name, it.id));
+    sel.appendChild(og);
   }
   if ([...sel.options].some((o) => o.value === current)) {
     sel.value = current;
@@ -370,25 +499,72 @@ function populateModelSelect(liveModels) {
 }
 
 async function refreshModels() {
+  const ollama = uiProvider() === "ollama";
   try {
-    const res = await fetch(`${OR_BASE}/models`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const { data } = await res.json();
-    const vision = data
-      .filter((m) => (m.architecture?.input_modalities || []).includes("image"))
-      .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
-    populateModelSelect(vision);
-    setStatus(t("modelsLoaded", { n: vision.length }), "ok");
+    if (ollama) await refreshOllamaModels();
+    else await refreshOpenRouterModels();
   } catch (e) {
-    setStatus(t("modelsError", { e: e.message }), "error");
+    populateModelSelect([recommendedGroup()]);
+    setStatus(ollama ? t("ollamaError", { u: uiOllamaUrl(), e: e.message }) : t("modelsError", { e: e.message }), "error");
   }
 }
 
+async function refreshOpenRouterModels() {
+  const res = await fetch(`${OR_BASE}/models`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const { data } = await res.json();
+  const vision = data
+    .filter((m) => (m.architecture?.input_modalities || []).includes("image"))
+    .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
+    .map((m) => ({ id: m.id, name: m.name || m.id }));
+  populateModelSelect([recommendedGroup(), { label: t("grpAll"), items: vision }]);
+  setStatus(t("modelsLoaded", { n: vision.length }), "ok");
+}
+
+/* Heuristik: Ollama meldet keine Modalitäten, aber multimodale Modelle bringen
+ * einen Bild-Encoder mit, der in details.families auftaucht (clip, mllama, …). */
+const VISION_HINT = /clip|vision|mllama|llava|minicpm-?v|moondream|qwen[0-9.]*-?vl|vl$/i;
+
+function ollamaHasVision(m) {
+  const fams = [m.details?.family, ...(m.details?.families || [])].filter(Boolean);
+  return fams.some((f) => VISION_HINT.test(f)) || VISION_HINT.test((m.name || "").split(":")[0]);
+}
+
+function ollamaLabel(m) {
+  const bits = [m.details?.parameter_size, m.size ? `${(m.size / 1e9).toFixed(1)} GB` : null].filter(Boolean);
+  return bits.length ? `${m.name} — ${bits.join(", ")}` : m.name;
+}
+
+async function refreshOllamaModels() {
+  const res = await fetch(`${uiOllamaUrl()}/api/tags`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const { models = [] } = await res.json();
+  const vision = [];
+  const textOnly = [];
+  for (const m of [...models].sort((a, b) => a.name.localeCompare(b.name))) {
+    (ollamaHasVision(m) ? vision : textOnly).push({ id: m.name, name: ollamaLabel(m) });
+  }
+  populateModelSelect([
+    { label: t("grpOllamaVision"), items: vision },
+    { label: t("grpOllamaText"), items: textOnly },
+    recommendedGroup(),
+  ]);
+  if (models.length) setStatus(t("ollamaLoaded", { n: models.length, v: vision.length }), "ok");
+  else setStatus(t("ollamaEmpty"), "error");
+}
+
 function saveSettings() {
+  const provider = $("set-provider").value === "ollama" ? "ollama" : "openrouter";
+  const chosen = $("set-model-custom").value.trim() || $("set-model").value;
+  localStorage.setItem(LS.provider, provider);
   localStorage.setItem(LS.key, $("set-key").value.trim());
-  const custom = $("set-model-custom").value.trim();
-  localStorage.setItem(LS.model, custom || $("set-model").value || DEFAULT_MODEL);
+  localStorage.setItem(LS.ollamaUrl, normalizeUrl($("set-ollama-url").value) || OLLAMA_DEFAULT_URL);
+  if (provider === "ollama") localStorage.setItem(LS.ollamaModel, chosen || DEFAULT_OLLAMA_MODEL);
+  else localStorage.setItem(LS.model, chosen || DEFAULT_MODEL);
   $("dlg-settings").close();
+  applyProviderUI();
+  updateProviderSwitch();
+  lastRequest = null;
   setStatus(t("saved", { m: getModel() }), "ok");
 }
 
@@ -440,6 +616,11 @@ function setStatus(msg, cls = "") {
   const el = $("status");
   el.textContent = msg;
   el.className = `status ${cls}`;
+  /* Bei offenem Dialog liegt die Statuszeile hinter dem Overlay — dort spiegeln,
+   * damit Meldungen zur Modellliste (z.B. Ollama nicht erreichbar) sichtbar sind. */
+  const inDlg = $("dlg-status");
+  inDlg.textContent = $("dlg-settings").open ? msg : "";
+  inDlg.className = `status ${cls}`;
 }
 
 function collectOptions() {
@@ -460,7 +641,7 @@ function collectOptions() {
 
 async function generate(repeat = false) {
   if (generating) return;
-  if (!getKey()) {
+  if (!isOllama() && !getKey()) {
     setStatus(t("noKey"), "error");
     openSettings();
     return;
@@ -468,7 +649,9 @@ async function generate(repeat = false) {
 
   let request;
   if (repeat && lastRequest) {
-    request = lastRequest;
+    // Gleiche Anfrage, aber mit dem aktuell aktiven Modell (Anbieter kann inzwischen gewechselt sein).
+    request = { ...lastRequest, model: getModel() };
+    lastRequest = request;
   } else {
     const opts = collectOptions();
     const userContent = [];
@@ -512,16 +695,26 @@ async function generate(repeat = false) {
   out.textContent = "";
   setStatus(t("generating", { m: request.model }));
 
+  const ollama = isOllama();
+  const headers = { "Content-Type": "application/json" };
+  if (!ollama) {
+    // Ollama läuft lokal und kennt keine Authentifizierung.
+    headers.Authorization = `Bearer ${getKey()}`;
+    headers["X-Title"] = "The Prompt Engine (Uncensored)";
+  }
+
   try {
-    const res = await fetch(`${OR_BASE}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${getKey()}`,
-        "Content-Type": "application/json",
-        "X-Title": "The Prompt Engine (Uncensored)",
-      },
-      body: JSON.stringify(request),
-    });
+    let res;
+    try {
+      res = await fetch(`${apiBase()}/chat/completions`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(request),
+      });
+    } catch (netErr) {
+      // Bei Ollama fast immer: Dienst läuft nicht oder CORS blockt den Browser.
+      throw new Error(netErr.message + (ollama ? t("errOllamaNet") : ""));
+    }
 
     if (!res.ok) {
       let detail = `HTTP ${res.status}`;
@@ -530,7 +723,7 @@ async function generate(repeat = false) {
         detail = err.error?.message || detail;
       } catch { /* leave detail */ }
       if (res.status === 401) detail += t("err401");
-      if (res.status === 404) detail += t("err404");
+      if (res.status === 404) detail += ollama ? t("errOllama404", { m: request.model }) : t("err404");
       throw new Error(detail);
     }
 
@@ -684,6 +877,16 @@ document.querySelectorAll("#lang-switch button").forEach((btn) => {
   });
 });
 
+document.querySelectorAll("#provider-switch button").forEach((btn) => {
+  btn.addEventListener("click", () => setProvider(btn.dataset.provider));
+});
+
+$("set-provider").addEventListener("change", () => {
+  applyProviderUI();
+  populateModelSelect([recommendedGroup()]);
+  refreshModels();
+});
+
 $("btn-settings").addEventListener("click", openSettings);
 $("btn-save-settings").addEventListener("click", saveSettings);
 $("btn-refresh-models").addEventListener("click", refreshModels);
@@ -693,5 +896,9 @@ $("btn-clear-history").addEventListener("click", () => {
 });
 
 initI18n();
+$("set-provider").value = getProvider();
 applyLanguage();
-if (!getKey()) setStatus(t("welcome"));
+applyProviderUI();
+updateProviderSwitch();
+if (isOllama()) setStatus(t("welcomeOllama", { m: getModel() }));
+else if (!getKey()) setStatus(t("welcome"));
