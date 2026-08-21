@@ -68,33 +68,60 @@ switching back and forth never loses a setting.
    ```bash
    ollama pull qwen2.5vl:7b
    ```
-2. Start Ollama so the browser is allowed to talk to it. Without
-   `OLLAMA_ORIGINS`, Ollama's CORS check blocks requests coming from the page:
-   ```bash
-   # Linux / macOS
-   OLLAMA_ORIGINS='*' OLLAMA_CONTEXT_LENGTH=8192 ollama serve
-   ```
-   ```powershell
-   # Windows (PowerShell), then restart Ollama
-   setx OLLAMA_ORIGINS "*"
-   setx OLLAMA_CONTEXT_LENGTH "8192"
-   ```
-   Instead of `*` you can name the page's exact origin, e.g.
-   `OLLAMA_ORIGINS='http://localhost:8080'`.
-3. Switch to **🖥️ Ollama** in the header. **⚙️ Settings** holds the address
+2. Start Ollama (`ollama serve`, or just leave the app/service running).
+3. **Open this page over `http://localhost`** — e.g. run `python3 -m http.server 8080`
+   in the repo folder and go to `http://localhost:8080`.
+4. Switch to **🖥️ Ollama** in the header. **⚙️ Settings** holds the address
    (default `http://localhost:11434`); **🔄 Load model list** shows every installed
    model, split into "with image support" and "text only".
 
-**Ollama notes**
+That's all: Ollama already allows requests from `localhost`, `127.0.0.1` and
+`0.0.0.0` on **any port** out of the box. `OLLAMA_ORIGINS` is only needed when the
+page runs at some other address — see below.
+
+**When the page isn't served from localhost**
+
+- **Served over https (e.g. GitHub Pages)**: the browser blocks the call to
+  `http://localhost:11434` as mixed content before Ollama is ever asked. **No**
+  Ollama setting fixes this — the page has to run locally over `http://localhost`.
+- **Opened by double-click (`file://`)**: the browser sends origin `null`, which
+  Ollama rejects. Again: serve it from a local server.
+- **Some other address, e.g. a LAN IP**: only then does the origin need to be
+  allowed explicitly:
+  ```bash
+  OLLAMA_ORIGINS='http://192.168.1.50:8080' ollama serve
+  ```
+
+**Setting environment variables persistently**
+
+They must reach the **server process**, not the shell you run `ollama run` in —
+restart Ollama afterwards:
+
+```powershell
+# Windows: quit Ollama from the tray icon, then
+setx OLLAMA_CONTEXT_LENGTH "8192"
+```
+```bash
+# macOS (app): does not survive a reboot
+launchctl setenv OLLAMA_CONTEXT_LENGTH "8192"
+```
+```bash
+# Linux (systemd): sudo systemctl edit ollama.service
+[Service]
+Environment="OLLAMA_CONTEXT_LENGTH=8192"
+```
+
+**Further notes**
 
 - **Image → Prompt** needs a multimodal model (`qwen2.5vl`, `llava`, `minicpm-v`,
   `llama3.2-vision`, `gemma3`). Text-only models work in **Idea → Prompt** mode only.
 - Keep `OLLAMA_CONTEXT_LENGTH` at 8192 or above: image tokens plus the long system
   prompt otherwise overflow the default context window and the start of the prompt
   gets truncated.
-- If the page is served over **https**, browsers block calls to the
-  `http://localhost` endpoint as mixed content. For Ollama, open the page locally
-  over `http://localhost`.
+- If access still fails, the error message in ⚙️ Settings names the actual cause
+  (mixed content, `file://`, foreign origin, or service unreachable). Note that
+  opening `http://localhost:11434` in the address bar proves nothing — that request
+  carries no origin for the browser to check.
 
 ## Model notes
 
