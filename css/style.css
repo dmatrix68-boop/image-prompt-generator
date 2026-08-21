@@ -52,6 +52,16 @@ body {
   background: linear-gradient(135deg, var(--accent), #5a3fd6);
   color: #fff;
 }
+.provider-switch button { display: flex; align-items: center; gap: 5px; }
+/* Aktiver Anbieter farblich unterscheidbar: violett = Cloud, grün = lokal. */
+.provider-switch button.active[data-provider="ollama"] { background: linear-gradient(135deg, #17a34a, #0e7a52); }
+.field small code {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 5px;
+  font-size: 0.95em;
+}
 .version-footer {
   text-align: center;
   color: var(--muted);
@@ -113,6 +123,9 @@ body {
 #btn-clear-img { position: absolute; top: 10px; right: 10px; }
 
 .field { display: block; margin-bottom: 12px; }
+/* !important, weil .field/.btn/.pane ein eigenes display setzen und damit die
+   [hidden]-Regel des UA-Stylesheets schlagen würden. */
+[hidden] { display: none !important; }
 .field > span { display: block; margin-bottom: 5px; color: var(--muted); font-size: 0.85rem; }
 .field small { display: block; margin-top: 5px; color: var(--muted); font-size: 0.75rem; line-height: 1.4; }
 .field small a { color: var(--accent-2); }

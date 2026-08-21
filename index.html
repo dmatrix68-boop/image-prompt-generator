@@ -13,10 +13,14 @@
       <span class="brand-icon">⚡</span>
       <div>
         <h1>The Prompt Engine</h1>
-        <p class="tagline" data-i18n="tagline">Uncensored Image-to-Prompt Generator · powered by OpenRouter</p>
+        <p class="tagline" data-i18n="tagline">Uncensored Image-to-Prompt Generator · powered by OpenRouter oder Ollama</p>
       </div>
     </div>
     <div class="topbar-actions">
+      <div class="lang-switch provider-switch" id="provider-switch" role="group" aria-label="Provider">
+        <button type="button" data-provider="openrouter" class="active" title="OpenRouter (Cloud)">☁️ OpenRouter</button>
+        <button type="button" data-provider="ollama" title="Ollama (lokal)">🖥️ Ollama</button>
+      </div>
       <div class="lang-switch" id="lang-switch" role="group" aria-label="Language">
         <button type="button" data-lang="de" class="active">DE</button>
         <button type="button" data-lang="en">EN</button>
@@ -146,27 +150,40 @@
   <dialog id="dlg-settings">
     <h2 data-i18n="dlg.h">⚙️ Einstellungen</h2>
     <label class="field">
+      <span data-i18n="dlg.provider.label">Anbieter</span>
+      <select id="set-provider">
+        <option value="openrouter" data-i18n="prov.openrouter">OpenRouter (Cloud, API-Key nötig)</option>
+        <option value="ollama" data-i18n="prov.ollama">Ollama (lokal, kein API-Key)</option>
+      </select>
+    </label>
+    <label class="field" id="row-key">
       <span data-i18n="dlg.key.label">OpenRouter API-Key</span>
       <input type="password" id="set-key" placeholder="sk-or-v1-…" autocomplete="off">
       <small data-i18n-html="dlg.key.small">Wird nur lokal im Browser gespeichert (localStorage) und direkt an openrouter.ai gesendet. Key erstellen: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a></small>
     </label>
+    <label class="field" id="row-ollama" hidden>
+      <span data-i18n="dlg.ollama.label">Ollama-Adresse</span>
+      <input type="text" id="set-ollama-url" placeholder="http://localhost:11434" autocomplete="off" spellcheck="false">
+      <small data-i18n-html="dlg.ollama.small">Ollama muss laufen (<code>ollama serve</code>) und Browser-Zugriffe erlauben — dafür <code>OLLAMA_ORIGINS=*</code> setzen. Modell vorher laden, z.B. <code>ollama pull qwen2.5vl:7b</code>.</small>
+    </label>
     <label class="field">
       <span data-i18n="dlg.model.label">Vision-Modell</span>
       <select id="set-model"></select>
-      <small data-i18n="dlg.model.small">Empfohlen für unzensierte Analyse: Qwen3-VL (unmoderierte Endpoints). Große Anbieter-Modelle (GPT, Claude, Gemini) verweigern NSFW-Bilder meist.</small>
+      <small id="set-model-small"></small>
     </label>
     <label class="field">
       <span data-i18n="dlg.custom.label">Eigene Modell-ID (überschreibt Auswahl, optional)</span>
-      <input type="text" id="set-model-custom" placeholder="z.B. qwen/qwen3-vl-235b-a22b-instruct">
+      <input type="text" id="set-model-custom" autocomplete="off" spellcheck="false">
     </label>
     <div class="dlg-actions">
       <button id="btn-refresh-models" class="btn ghost" data-i18n="dlg.refresh">🔄 Modellliste laden</button>
       <button id="btn-save-settings" class="btn primary" data-i18n="dlg.save">Speichern</button>
     </div>
+    <p id="dlg-status" class="status"></p>
     <p class="legal" data-i18n="dlg.legal">Nur für volljährige Nutzer. Keine Analyse von Darstellungen Minderjähriger oder nicht-einvernehmlicher realer Inhalte — solche Anfragen werden abgelehnt. Du bist für die Einhaltung der Nutzungsbedingungen deines Modell-Anbieters verantwortlich.</p>
   </dialog>
 
-  <div class="version-footer">v1.0</div>
+  <div class="version-footer">v1.1</div>
 
   <script src="js/app.js"></script>
 </body>
