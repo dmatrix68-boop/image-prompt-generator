@@ -48,9 +48,11 @@ switching back and forth never loses a setting.
 ## Usage
 
 1. Start the page:
-   - **Windows**: double-click `start.bat`. It picks a free port, starts the
-     server in the right folder, and opens the browser.
+   - **Windows**: double-click `start.bat`. It checks whether Ollama is running
+     and starts it if needed, picks a free port, starts the server in the right
+     folder, and opens the browser.
    - **macOS / Linux**: `python3 serve.py` in the project folder — same thing.
+   - To skip the Ollama check: `start.bat --no-ollama` / `python3 serve.py --no-ollama`.
    - **By hand**: `python3 -m http.server 8080` **in the folder holding
      `index.html`**, then open `http://localhost:8080`.
 

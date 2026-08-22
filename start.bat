@@ -3,6 +3,9 @@ rem The Prompt Engine - lokaler Start unter Windows.
 rem Wechselt in den Ordner DIESER Datei (%~dp0) und startet serve.py dort.
 rem Damit landet der Server garantiert im richtigen Ordner, auch wenn die Datei
 rem aus einem anderen Verzeichnis heraus aufgerufen wird.
+rem
+rem serve.py prueft ausserdem, ob Ollama laeuft, und startet es bei Bedarf.
+rem Ohne diese Pruefung starten:  start.bat --no-ollama
 
 setlocal
 cd /d "%~dp0"
@@ -25,5 +28,5 @@ if not defined PY (
   exit /b 1
 )
 
-"%PY%" serve.py
+"%PY%" serve.py %*
 if errorlevel 1 pause

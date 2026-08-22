@@ -47,9 +47,11 @@ Anbieter getrennt gespeichert — ein Wechsel verliert also keine Einstellung.
 ## Nutzung
 
 1. Seite starten:
-   - **Windows**: `start.bat` doppelklicken. Das Skript sucht sich einen freien
-     Port, startet den Server im richtigen Ordner und öffnet den Browser.
+   - **Windows**: `start.bat` doppelklicken. Das Skript prüft, ob Ollama läuft,
+     startet es bei Bedarf, sucht sich einen freien Port, startet den Server im
+     richtigen Ordner und öffnet den Browser.
    - **macOS / Linux**: `python3 serve.py` im Projektordner — macht dasselbe.
+   - Ohne die Ollama-Prüfung: `start.bat --no-ollama` bzw. `python3 serve.py --no-ollama`.
    - **Von Hand**: `python3 -m http.server 8080` **im Ordner mit `index.html`**,
      dann `http://localhost:8080` aufrufen.
 
