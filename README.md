@@ -47,12 +47,17 @@ switching back and forth never loses a setting.
 
 ## Usage
 
-1. Serve the page — locally, any static server will do:
-   ```bash
-   python3 -m http.server 8080
-   # → http://localhost:8080
-   ```
-   Alternatively host it on GitHub Pages / Netlify / any web space.
+1. Start the page:
+   - **Windows**: double-click `start.bat`. It checks whether Ollama is running
+     and starts it if needed, picks a free port, starts the server in the right
+     folder, and opens the browser.
+   - **macOS / Linux**: `python3 serve.py` in the project folder — same thing.
+   - To skip the Ollama check: `start.bat --no-ollama` / `python3 serve.py --no-ollama`.
+   - **By hand**: `python3 -m http.server 8080` **in the folder holding
+     `index.html`**, then open `http://localhost:8080`.
+
+   For Ollama the page has to come from `localhost`. Hosting it on GitHub Pages /
+   Netlify works with OpenRouter only — see Option B.
 2. Pick a provider in the top-right header and set it up under **⚙️ Settings**
    (see below).
 3. Upload an image or enter an idea → **⚡ Generate prompt**.
@@ -69,8 +74,8 @@ switching back and forth never loses a setting.
    ollama pull qwen2.5vl:7b
    ```
 2. Start Ollama (`ollama serve`, or just leave the app/service running).
-3. **Open this page over `http://localhost`** — e.g. run `python3 -m http.server 8080`
-   in the repo folder and go to `http://localhost:8080`.
+3. **Open this page over `http://localhost`** — easiest via `start.bat` (Windows)
+   or `python3 serve.py` (macOS/Linux).
 4. Switch to **🖥️ Ollama** in the header. **⚙️ Settings** holds the address
    (default `http://localhost:11434`); **🔄 Load model list** shows every installed
    model, split into "with image support" and "text only".

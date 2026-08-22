@@ -1,0 +1,2 @@
+# Batch-Dateien brauchen CRLF, sonst kann cmd.exe mehrzeilige Bloecke falsch lesen.
+*.bat text eol=crlf
