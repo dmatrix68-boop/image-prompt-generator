@@ -23,12 +23,29 @@ Anbieter getrennt gespeichert — ein Wechsel verliert also keine Einstellung.
 - **Bild → Prompt**: Bild hochladen (Drag & Drop, Klick oder Strg+V), ein Vision-LLM
   analysiert es und erzeugt einen detaillierten Generierungs-Prompt.
 - **Idee → Prompt**: Kurze Idee eingeben, die Engine baut daraus einen Profi-Prompt.
-- **Ziel-Plattformen**: SDXL (Tags + Negative Prompt), Pony/Illustrious (Booru-Tags
-  inkl. score-/rating-Tags), Flux (Fließtext), Midjourney (inkl. `--ar`/`--stylize`),
-  DALL-E, Ideogram, Nano Banana/Gemini, Qwen-Image (mit Text-Rendering), Krea 2
-  (fotorealistisch), universell.
+- **Bild → Bild**: Quellbild hochladen und in Worten beschreiben, was daran geändert
+  werden soll — heraus kommt ein fertiger Edit-Prompt für Bildbearbeitungs-Modelle.
+  Der **Änderungsumfang** (minimal / moderat / stark) steuert, wie viel sich neben
+  der gewünschten Änderung mitverändern darf; bei „minimal“ schreibt die Engine die
+  zu erhaltenden Eigenschaften (Identität, Pose, Hintergrund, Licht, Bildausschnitt)
+  ausdrücklich in den Prompt.
+- **Bild → Video**: Startbild hochladen, optional ein **Endbild** als Ziel-Frame, dazu
+  beschreiben, was im Clip passieren soll — heraus kommt ein Image-to-Video-Prompt.
+  Zusätzlich einstellbar: Kamerabewegung (Dolly, Schwenk, Orbit, Kranfahrt, Handkamera
+  …), Bewegungsintensität (dezent / moderat / dynamisch) und Cliplänge.
+- **Ziel-Plattformen** je Modus:
+  - *Bild/Idee → Prompt*: SDXL (Tags + Negative Prompt), Pony/Illustrious (Booru-Tags
+    inkl. score-/rating-Tags), Flux (Fließtext), Midjourney (inkl. `--ar`/`--stylize`),
+    DALL-E, Ideogram, Nano Banana/Gemini, Qwen-Image (mit Text-Rendering), Krea 2
+    (fotorealistisch), universell.
+  - *Bild → Bild*: Nano Banana/Gemini, Flux.1 Kontext, Qwen-Image-Edit,
+    Seedream/SeedEdit, GPT-Image/DALL-E Edit, SD/SDXL img2img + Inpainting (mit
+    Denoise-Empfehlung und Maskenbereich), universell.
+  - *Bild → Video*: Kling, Runway Gen-4, Google Veo 3 (mit Ton-Beschreibung),
+    Hailuo/MiniMax, Luma Dream Machine/Ray, Wan 2.2, Sora 2, Seedance, universell.
 - **Bildformate**: Aspect-Ratio-Auswahl wie im Original (Auto, 1:1, 16:9, 9:16, 4:3,
   3:2) — bei Midjourney als `--ar`, bei SDXL/Pony mit passender Auflösungsempfehlung.
+  Im Modus **Bild → Bild** entfällt die Auswahl: dort gibt das Quellbild das Format vor.
 - **Technical Parameters** (wie im Original, ausklappbar): Logic Mode, Camera Angle,
   Shot Type, Perspective, Composition, Lighting, Atmosphere, Mood, Emotion — jeweils
   mit denselben Wertelisten wie Midnight LAB v2.0.
@@ -59,7 +76,8 @@ Anbieter getrennt gespeichert — ein Wechsel verliert also keine Einstellung.
    GitHub Pages / Netlify funktioniert nur mit OpenRouter — siehe Variante B.
 2. Anbieter oben rechts wählen und unter **⚙️ Einstellungen** einrichten
    (siehe unten).
-3. Bild hochladen oder Idee eingeben → **⚡ Prompt generieren**.
+3. Modus oben links wählen, Bild hochladen bzw. Idee eingeben →
+   **⚡ Prompt generieren**.
 
 ### Variante A: OpenRouter (Cloud)
 
@@ -118,9 +136,13 @@ Environment="OLLAMA_CONTEXT_LENGTH=8192"
 
 **Weitere Hinweise**
 
-- **Bild → Prompt** braucht ein multimodales Modell (`qwen2.5vl`, `llava`,
-  `minicpm-v`, `llama3.2-vision`, `gemma3`). Reine Text-Modelle funktionieren nur
-  im Modus **Idee → Prompt**.
+- **Bild → Prompt**, **Bild → Bild** und **Bild → Video** brauchen ein multimodales
+  Modell (`qwen2.5vl`, `llava`, `minicpm-v`, `llama3.2-vision`, `gemma3`). Reine
+  Text-Modelle funktionieren nur im Modus **Idee → Prompt**.
+- Das optionale **Endbild** in **Bild → Video** schickt zwei Bilder in einer Anfrage.
+  Nicht jedes Modell verarbeitet mehrere Bilder gleich gut; ignoriert das Modell das
+  zweite Bild, hilft es, das Endbild wegzulassen und den Zielzustand stattdessen in
+  der Videobeschreibung zu formulieren.
 - `OLLAMA_CONTEXT_LENGTH` sollte bei ≥ 8192 liegen: Bild-Tokens plus der lange
   System-Prompt sprengen sonst das Standard-Kontextfenster, und der Anfang des
   Prompts wird abgeschnitten.
