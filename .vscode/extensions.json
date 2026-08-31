@@ -1,0 +1,4 @@
+{
+  // Nur damit F5 (launch.json) funktioniert. Für tasks.json wird nichts gebraucht.
+  "recommendations": ["ms-python.python"]
+}

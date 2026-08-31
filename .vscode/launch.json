@@ -1,0 +1,28 @@
+{
+  // F5 bzw. „Ausführen und Debuggen" — startet serve.py mit Debugger, sodass
+  // Haltepunkte in serve.py greifen. Braucht die Python-Extension
+  // (ms-python.python + ms-python.debugpy); beide sind installiert, und
+  // extensions.json empfiehlt sie, damit sie in einem neuen Codespace
+  // wieder mitkommen. Wer nur starten will, nimmt die Aufgabe aus tasks.json.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Prompt Engine starten",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/serve.py",
+      // --no-ollama, weil Ollama im Codespace nicht funktionieren kann: die
+      // weitergeleitete Seite läuft über https, der Browser blockt den Aufruf
+      // von http://localhost:11434 als Mixed Content.
+      "args": ["--no-ollama"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "env": {
+        // Unterdrückt die Warnung „frozen modules ... may make the debugger
+        // miss breakpoints", die debugpy ab Python 3.11 sonst bei jedem Start
+        // ausgibt. Betrifft nur die Meldung, nicht die Funktion.
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      }
+    }
+  ]
+}
