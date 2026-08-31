@@ -1,0 +1,22 @@
+{
+  // Startet die Seite im Codespace: Terminal → Run Build Task (Strg+Umschalt+B).
+  // Funktioniert ohne jede Extension — anders als launch.json, das die
+  // Python-Extension braucht.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Prompt Engine starten",
+      "type": "shell",
+      // --no-ollama, weil Ollama im Codespace nicht funktionieren kann: die
+      // weitergeleitete Seite läuft über https, der Browser blockt den Aufruf
+      // von http://localhost:11434 als Mixed Content. Ohne das Flag sucht
+      // serve.py erst vergeblich nach einem lokalen Ollama-Server.
+      "command": "python3 serve.py --no-ollama",
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      // Kein Compiler, also nichts, worauf ein Problem-Matcher warten müsste.
+      "problemMatcher": []
+    }
+  ]
+}
