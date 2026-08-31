@@ -50,27 +50,31 @@ const DEFAULT_OLLAMA_MODEL = RECOMMENDED_OLLAMA[0].id;
 let lang = localStorage.getItem(LS.lang) === "en" ? "en" : "de";
 
 const UI_EN = {
-  tagline: "Uncensored Image-to-Prompt Generator · powered by OpenRouter or Ollama",
+  tagline: "Uncensored prompt generator · image, image edit & video · powered by OpenRouter or Ollama",
   settingsBtn: "⚙️ Settings",
   "tab.image": "🖼️ Image → Prompt",
   "tab.text": "💡 Idea → Prompt",
+  "tab.edit": "🎨 Image → Image",
+  "tab.video": "🎬 Image → Video",
   "drop.hint": "<strong>Drag an image here</strong>, click to select<br>or paste with <kbd>Ctrl</kbd>+<kbd>V</kbd>",
+  "drop.hint.end": "<strong>Drag the end frame here</strong><br>last frame of the clip",
   "img.clear": "✕ Remove image",
+  "img.clear.end": "✕ Remove",
   "img.extra.label": "Additional instruction (optional)",
   "img.extra.ph": "e.g. “focus on the lighting mood”, “describe as an anime version” …",
+  "edit.desc.label": "Change description",
+  "edit.desc.ph": "What should change in the image? e.g. “red leather jacket instead of the coat”, “swap the background for a city at night”, “remove the person” …",
+  "edit.desc.small": "Describe the change only — the engine adds what has to stay untouched.",
+  "video.desc.label": "Video description",
+  "video.desc.ph": "What should happen in the clip? e.g. “slowly turns her head towards the camera, hair moving in the wind”, “camera travels down the alley” …",
+  "video.desc.small": "The first image is the start frame. An optional end frame is analyzed as the target frame (the model has to handle two images).",
   "idea.label": "Your idea",
   "idea.ph": "Briefly describe what you want to generate — the engine turns it into a detailed professional prompt.",
   "opt.platform": "Target platform",
-  "plat.sdxl": "Stable Diffusion / SDXL (tags + negative)",
-  "plat.pony": "Pony / Illustrious (booru tags)",
-  "plat.flux": "Flux (natural language)",
-  "plat.mj": "Midjourney (with --parameters)",
-  "plat.dalle": "DALL-E (natural language)",
-  "plat.ideogram": "Ideogram (natural language, text rendering)",
-  "plat.nano": "Nano Banana / Gemini (natural language)",
-  "plat.qwen": "Qwen-Image (natural language, text rendering)",
-  "plat.krea2": "Krea 2 (photorealistic, natural language)",
-  "plat.generic": "Universal / other generators",
+  "opt.scope": "Change scope",
+  "opt.cammove": "Camera movement",
+  "opt.motion": "Motion intensity",
+  "opt.duration": "Clip length",
   "opt.style": "Style",
   "style.auto": "Automatic (derive from image/idea)",
   "style.photo": "Photorealistic",
@@ -116,6 +120,14 @@ const MSG = {
     noKey: "Kein API-Key hinterlegt — bitte in den Einstellungen eintragen.",
     noImage: "Bitte zuerst ein Bild auswählen.",
     noIdea: "Bitte zuerst eine Idee eingeben.",
+    noSourceImage: "Bitte zuerst ein Quellbild auswählen.",
+    noStartImage: "Bitte zuerst ein Startbild auswählen.",
+    noEditDesc: "Bitte beschreiben, was am Bild geändert werden soll.",
+    noVideoDesc: "Bitte beschreiben, was im Video passieren soll.",
+    slotMain: "Bild",
+    slotSource: "Quellbild",
+    slotStart: "Startbild (erstes Frame)",
+    slotEnd: "Endbild (optional)",
     generating: "Generiere mit {m} …",
     done: "Fertig.",
     copied: "In die Zwischenablage kopiert.",
@@ -156,6 +168,14 @@ const MSG = {
     noKey: "No API key set — please add one in the settings.",
     noImage: "Please select an image first.",
     noIdea: "Please enter an idea first.",
+    noSourceImage: "Please select a source image first.",
+    noStartImage: "Please select a start image first.",
+    noEditDesc: "Please describe what should change in the image.",
+    noVideoDesc: "Please describe what should happen in the video.",
+    slotMain: "Image",
+    slotSource: "Source image",
+    slotStart: "Start image (first frame)",
+    slotEnd: "End frame (optional)",
     generating: "Generating with {m} …",
     done: "Done.",
     copied: "Copied to clipboard.",
@@ -235,6 +255,7 @@ function applyLanguage() {
   document.querySelectorAll("#lang-switch button").forEach((b) => {
     b.classList.toggle("active", b.dataset.lang === lang);
   });
+  applyMode(mode);
   applyProviderUI();
   renderHistory();
 }
@@ -299,7 +320,157 @@ Output ONE detailed natural-language prompt paragraph covering subject, appearan
 Format exactly:
 PROMPT:
 <paragraph>`,
+
+  /* ----- Bild → Bild: Editoren nehmen eine Anweisung entgegen, kein Neu-Prompt.
+   * Ausnahme SDXL img2img — dort gibt es keine Edit-Instruktion, sondern nur einen
+   * vollständigen Prompt für das Zielbild plus Denoise-Stärke und Maske. ----- */
+  "nano-edit": `Target: Nano Banana / Gemini image editing (instruction based).
+Output ONE conversational natural-language editing instruction addressed to the model. Name the exact element to change and the desired result, and state explicitly what must stay identical (subject identity, pose, background, lighting, framing, style). No tag lists, no negative prompt, no parameters.
+Format exactly:
+PROMPT:
+<edit instruction>`,
+  "flux-kontext": `Target: Flux.1 Kontext (in-context image editing).
+Output ONE imperative editing instruction, short and unambiguous ("Change X to Y", "Remove X", "Replace X with Y"). Kontext keeps untouched regions on its own, so describe ONLY the change plus the identity anchors that must be preserved ("keep the same face, pose, lighting and camera angle"). Do not re-describe the whole scene.
+Format exactly:
+PROMPT:
+<edit instruction>`,
+  "qwen-edit": `Target: Qwen-Image-Edit.
+Output ONE precise natural-language editing instruction. Qwen-Image-Edit is strong at lettering and at localized edits: name the region or object to modify, the exact new content (put any text/lettering in double quotes) and what has to stay unchanged.
+Format exactly:
+PROMPT:
+<edit instruction>`,
+  "seededit": `Target: Seedream / SeedEdit.
+Output ONE compact natural-language editing instruction of at most 60 words: the target object, the change, and the preservation constraints.
+Format exactly:
+PROMPT:
+<edit instruction>`,
+  "gpt-image-edit": `Target: GPT-Image / DALL-E edit.
+Output ONE natural-language instruction that describes the resulting image after the change, phrased as a request to the model, plus an explicit list of what must remain unchanged.
+Format exactly:
+PROMPT:
+<edit instruction>`,
+  "sdxl-img2img": `Target: Stable Diffusion / SDXL img2img and inpainting.
+img2img takes no edit instruction: output the FULL comma-separated tag prompt of the RESULTING image (the source scene with the requested change already applied), then a negative prompt, then a recommended denoising strength, then the region to mask for inpainting.
+Format exactly:
+PROMPT:
+<positive prompt>
+NEGATIVE:
+<negative prompt>
+DENOISE:
+<value between 0.15 and 0.85, plus one short sentence why>
+MASK:
+<region to inpaint, or "—" for a full-image img2img pass>`,
+  "generic-edit": `Target: a general-purpose AI image editor.
+Output ONE clear natural-language editing instruction (what to change, exactly how, and what must stay untouched), then a full description of the intended result image for editors that need a complete prompt instead of an instruction.
+Format exactly:
+PROMPT:
+<edit instruction>
+RESULT:
+<full description of the edited image>`,
+
+  /* ----- Bild → Video: Startframe steht schon im Bild, gefragt ist Bewegung. ----- */
+  kling: `Target: Kling (image-to-video).
+The attached image is the first frame. Output ONE flowing natural-language video prompt describing, in this order: what the subject does, how the scene evolves, and the camera work. Present tense, under 150 words, no shot lists, no timestamps.
+Then a short negative prompt of artifacts to avoid.
+Format exactly:
+PROMPT:
+<video prompt>
+NEGATIVE:
+<negative prompt>`,
+  runway: `Target: Runway Gen-4 (image-to-video).
+Runway wants motion, not scene description — the image already defines the scene. Output ONE concise prompt of at most 60 words covering only the subject motion and the camera move, in simple direct language. No negative prompt.
+Format exactly:
+PROMPT:
+<motion prompt>`,
+  veo: `Target: Google Veo 3 (image-to-video with native audio).
+Output ONE cinematic natural-language prompt covering subject action, how the environment changes, camera movement and lighting. Then a separate audio description (ambience, sound effects, and any dialogue in double quotes).
+Format exactly:
+PROMPT:
+<video prompt>
+AUDIO:
+<sound design / dialogue>`,
+  hailuo: `Target: Hailuo / MiniMax (image-to-video).
+Output ONE short action-focused prompt of at most 80 words: subject motion first, then the camera movement in Hailuo's bracket syntax where it fits (e.g. [Push in], [Pan left], [Tracking shot]).
+Format exactly:
+PROMPT:
+<video prompt>`,
+  luma: `Target: Luma Dream Machine / Ray (image-to-video, keyframes).
+Output ONE concise natural-language prompt describing the motion that plays out from the given keyframe(s) plus the camera move. Keep it physically plausible.
+Format exactly:
+PROMPT:
+<video prompt>`,
+  wan: `Target: Wan 2.2 (open-source image-to-video).
+Output ONE detailed natural-language video prompt (subject motion, scene dynamics, camera, lighting, style), then a negative prompt with the usual artifact terms plus anything specific to avoid here.
+Format exactly:
+PROMPT:
+<video prompt>
+NEGATIVE:
+<negative prompt>`,
+  sora: `Target: Sora 2 (image-to-video).
+Output ONE descriptive prompt written like a screenplay shot description: subject action, environment, camera, lighting and mood in flowing prose. Then a separate audio line for ambience and dialogue.
+Format exactly:
+PROMPT:
+<video prompt>
+AUDIO:
+<sound design / dialogue>`,
+  seedance: `Target: Seedance (image-to-video).
+Output ONE compact prompt of at most 80 words as comma-separated clauses: subject action, then camera movement, then atmosphere.
+Format exactly:
+PROMPT:
+<video prompt>`,
+  "generic-video": `Target: a general-purpose image-to-video generator.
+Output ONE natural-language video prompt covering subject motion, scene dynamics, camera movement, lighting and mood, followed by a short negative prompt.
+Format exactly:
+PROMPT:
+<video prompt>
+NEGATIVE:
+<negative prompt>`,
 };
+
+/* Auswahllisten der Ziel-Plattform je Modus-Gruppe. Die Modi „Bild → Prompt“ und
+ * „Idee → Prompt“ erzeugen ein Bild von Grund auf (create), „Bild → Bild“ bearbeitet
+ * ein vorhandenes (edit), „Bild → Video“ animiert es (video). */
+const PLATFORMS = {
+  create: [
+    { id: "sdxl", de: "Stable Diffusion / SDXL (Tags + Negative)", en: "Stable Diffusion / SDXL (tags + negative)" },
+    { id: "pony", de: "Pony / Illustrious (Booru-Tags)", en: "Pony / Illustrious (booru tags)" },
+    { id: "flux", de: "Flux (natürliche Sprache)", en: "Flux (natural language)" },
+    { id: "midjourney", de: "Midjourney (mit --Parametern)", en: "Midjourney (with --parameters)" },
+    { id: "dalle", de: "DALL-E (natürliche Sprache)", en: "DALL-E (natural language)" },
+    { id: "ideogram", de: "Ideogram (natürliche Sprache, Text-Rendering)", en: "Ideogram (natural language, text rendering)" },
+    { id: "nano", de: "Nano Banana / Gemini (natürliche Sprache)", en: "Nano Banana / Gemini (natural language)" },
+    { id: "qwen-image", de: "Qwen-Image (natürliche Sprache, Text-Rendering)", en: "Qwen-Image (natural language, text rendering)" },
+    { id: "krea2", de: "Krea 2 (fotorealistisch, natürliche Sprache)", en: "Krea 2 (photorealistic, natural language)" },
+    { id: "generic", de: "Universell / andere Generatoren", en: "Universal / other generators" },
+  ],
+  edit: [
+    { id: "nano-edit", de: "Nano Banana / Gemini (Bildbearbeitung)", en: "Nano Banana / Gemini (image editing)" },
+    { id: "flux-kontext", de: "Flux.1 Kontext (Edit-Anweisung)", en: "Flux.1 Kontext (edit instruction)" },
+    { id: "qwen-edit", de: "Qwen-Image-Edit (auch Text im Bild)", en: "Qwen-Image-Edit (incl. text in image)" },
+    { id: "seededit", de: "Seedream / SeedEdit (kompakt)", en: "Seedream / SeedEdit (compact)" },
+    { id: "gpt-image-edit", de: "GPT-Image / DALL-E Edit", en: "GPT-Image / DALL-E edit" },
+    { id: "sdxl-img2img", de: "SD / SDXL img2img + Inpainting (mit Denoise & Maske)", en: "SD / SDXL img2img + inpainting (with denoise & mask)" },
+    { id: "generic-edit", de: "Universell / andere Bildeditoren", en: "Universal / other image editors" },
+  ],
+  video: [
+    { id: "kling", de: "Kling (Bild → Video)", en: "Kling (image-to-video)" },
+    { id: "runway", de: "Runway Gen-4 (nur Bewegung, kurz)", en: "Runway Gen-4 (motion only, short)" },
+    { id: "veo", de: "Google Veo 3 (mit Ton-Beschreibung)", en: "Google Veo 3 (with audio description)" },
+    { id: "hailuo", de: "Hailuo / MiniMax (Bewegung + [Kamera])", en: "Hailuo / MiniMax (motion + [camera])" },
+    { id: "luma", de: "Luma Dream Machine / Ray (Keyframes)", en: "Luma Dream Machine / Ray (keyframes)" },
+    { id: "wan", de: "Wan 2.2 (Open Source, mit Negative)", en: "Wan 2.2 (open source, with negative)" },
+    { id: "sora", de: "Sora 2 (Prosa + Ton)", en: "Sora 2 (prose + audio)" },
+    { id: "seedance", de: "Seedance (kompakt)", en: "Seedance (compact)" },
+    { id: "generic-video", de: "Universell / andere Videogeneratoren", en: "Universal / other video generators" },
+  ],
+};
+
+/* Welche Plattform-Gruppe gehört zu welchem Modus. */
+const MODE_GROUP = { image: "create", text: "create", edit: "edit", video: "video" };
+
+/* Zuletzt gewählte Plattform je Gruppe — ein Moduswechsel soll die Auswahl der
+ * anderen Modi nicht überschreiben. */
+const platformChoice = { create: "sdxl", edit: "nano-edit", video: "kling" };
 
 const STYLE_HINTS = {
   auto: "Infer the best fitting style from the source and reflect it in the prompt.",
@@ -340,18 +511,126 @@ const DETAIL_HINTS = {
   extreme: "Extreme detail: exhaustively capture every visible element — anatomy, textures, materials, background objects, light sources, shadows, color palette.",
 };
 
+/* ---------- Bild → Bild ---------- */
+
+/* Wie weit darf der Editor vom Original abweichen? Der Umfang steht bewusst
+ * getrennt von der Änderungsbeschreibung: dieselbe Änderung ist als chirurgischer
+ * Eingriff oder als freie Neuinterpretation umsetzbar. */
+const EDIT_SCOPES = [
+  { id: "minimal", de: "Minimal (nur das Genannte, sonst identisch)", en: "Minimal (only what was asked, rest identical)" },
+  { id: "moderate", de: "Moderat (Umgebung darf sich anpassen)", en: "Moderate (surroundings may adapt)" },
+  { id: "strong", de: "Stark (freie Neuinterpretation)", en: "Strong (free reinterpretation)" },
+];
+
+const EDIT_SCOPE_HINTS = {
+  minimal: "Edit scope: surgical. Change only what the user explicitly asked for; identity, pose, background, lighting, colors, framing and style must stay identical. State these preservation constraints explicitly in the prompt.",
+  moderate: "Edit scope: moderate. Apply the requested change and adapt the directly affected areas (shadows, reflections, contact points, perspective) so the result stays coherent — but keep the overall composition, subject identity and style of the source.",
+  strong: "Edit scope: free reinterpretation. The requested change may transform the whole image (style, lighting, environment); only the core subject identity and the essential composition have to stay recognizable.",
+};
+
+/* ---------- Bild → Video ---------- */
+
+const CAMERA_MOVES = [
+  { id: "", de: "Automatisch (passend zur Szene)", en: "Automatic (fitting the scene)" },
+  { id: "static", de: "Statisch (feste Kamera)", en: "Static (locked-off camera)" },
+  { id: "push-in", de: "Langsame Fahrt hinein (Dolly in)", en: "Slow push in (dolly in)" },
+  { id: "pull-out", de: "Fahrt heraus (Dolly out)", en: "Pull out (dolly out)" },
+  { id: "pan-left", de: "Schwenk nach links", en: "Pan left" },
+  { id: "pan-right", de: "Schwenk nach rechts", en: "Pan right" },
+  { id: "tilt-up", de: "Neigen nach oben", en: "Tilt up" },
+  { id: "tilt-down", de: "Neigen nach unten", en: "Tilt down" },
+  { id: "orbit", de: "Umkreisen (Orbit / Arc)", en: "Orbit / arc around the subject" },
+  { id: "crane", de: "Kranfahrt nach oben", en: "Crane up" },
+  { id: "handheld", de: "Handkamera, folgt dem Motiv", en: "Handheld, following the subject" },
+  { id: "tracking", de: "Mitfahrt (Tracking Shot)", en: "Tracking shot" },
+  { id: "zoom-in", de: "Zoom hinein", en: "Zoom in" },
+];
+
+const CAMERA_MOVE_HINTS = {
+  static: "the camera stays completely locked off",
+  "push-in": "the camera slowly pushes in towards the subject (dolly in)",
+  "pull-out": "the camera pulls back and reveals more of the scene (dolly out)",
+  "pan-left": "the camera pans to the left",
+  "pan-right": "the camera pans to the right",
+  "tilt-up": "the camera tilts upwards",
+  "tilt-down": "the camera tilts downwards",
+  orbit: "the camera arcs around the subject in a smooth orbit",
+  crane: "the camera cranes upwards, gaining height",
+  handheld: "a handheld camera follows the subject with subtle natural shake",
+  tracking: "the camera tracks alongside the moving subject",
+  "zoom-in": "the lens zooms in on the subject",
+};
+
+const MOTION_LEVELS = [
+  { id: "subtle", de: "Dezent (Cinemagraph, kaum Bewegung)", en: "Subtle (cinemagraph, barely any motion)" },
+  { id: "moderate", de: "Moderat (klare, ruhige Bewegung)", en: "Moderate (clear, calm motion)" },
+  { id: "dynamic", de: "Dynamisch (viel Action)", en: "Dynamic (lots of action)" },
+];
+
+const MOTION_HINTS = {
+  subtle: "Motion intensity: subtle — only natural micro-movement (breathing, blinking, hair, fabric, drifting light or smoke); the frame stays very close to the source image.",
+  moderate: "Motion intensity: moderate — clear but controlled movement of subject and camera, one single continuous action.",
+  dynamic: "Motion intensity: dynamic — pronounced action and camera movement, while staying physically plausible and free of morphing artifacts.",
+};
+
+const DURATIONS = [
+  { id: "auto", de: "Automatisch", en: "Automatic" },
+  { id: "5s", de: "5 Sekunden", en: "5 seconds" },
+  { id: "8s", de: "8 Sekunden", en: "8 seconds" },
+  { id: "10s", de: "10 Sekunden", en: "10 seconds" },
+];
+
+/* Modusabhängige Rollenbeschreibung — sie legt fest, was das Modell mit dem
+ * (ggf. angehängten) Bild überhaupt tun soll. */
+const MODE_TASKS = {
+  image: "Analyze the attached image completely and factually, then write a prompt that would recreate it as faithfully as possible.",
+  text: "Expand the user's idea into a complete, professional generation prompt.",
+  edit: "The attached image is the SOURCE image; the user states the change they want. Analyze the source precisely, then write an image-editing prompt that applies exactly that change to this very image and leaves everything else untouched. Never write a prompt that would generate a new image from scratch, and never invent changes the user did not ask for.",
+  video: "The attached image is the FIRST FRAME of a video clip; the user states what should happen. Analyze the frame precisely, then write an image-to-video prompt that animates exactly this frame. Describe motion over time — subject action, scene dynamics and camera work — not the static content of the frame, which the video model already has.",
+};
+
 function buildSystemPrompt(opts) {
   const parts = [
-    "You are The Prompt Engine, an elite prompt engineer for AI image generators. You convert images or ideas into production-ready generation prompts.",
-    opts.mode === "image"
-      ? "Analyze the attached image completely and factually, then write a prompt that would recreate it as faithfully as possible."
-      : "Expand the user's idea into a complete, professional generation prompt.",
-    PLATFORM_SPECS[opts.platform],
-    STYLE_HINTS[opts.style],
-    DETAIL_HINTS[opts.detail],
+    "You are The Prompt Engine, an elite prompt engineer for AI image, image-editing and video generators. You convert images or ideas into production-ready generation prompts.",
+    MODE_TASKS[opts.mode],
   ];
-  // Bildformat
-  if (opts.ratio && opts.ratio !== "auto") {
+
+  if (opts.mode === "video" && opts.endImage) {
+    parts.push(
+      "A SECOND image is attached: it is the target LAST frame of the clip. Describe the motion as one continuous transition from the first frame into that last frame — name which elements move, how they move, and how they end up matching the final frame. Do not describe the two frames as separate shots; there is no cut."
+    );
+  }
+
+  parts.push(PLATFORM_SPECS[opts.platform]);
+
+  /* Im Edit-Modus heißt „Automatisch“ nicht „Stil ableiten“, sondern „Stil des
+   * Originals erhalten“ — sonst schreibt das Modell den Look ungefragt um. */
+  if (opts.mode === "edit" && opts.style === "auto") {
+    parts.push("Preserve the original style, medium and look of the source image unless the requested change explicitly asks for a different one.");
+  } else {
+    parts.push(STYLE_HINTS[opts.style]);
+  }
+  parts.push(DETAIL_HINTS[opts.detail]);
+
+  if (opts.mode === "edit") {
+    parts.push(EDIT_SCOPE_HINTS[opts.editScope]);
+  }
+
+  if (opts.mode === "video") {
+    parts.push(MOTION_HINTS[opts.motion]);
+    if (opts.cameraMove) {
+      parts.push(`Mandatory camera work: ${CAMERA_MOVE_HINTS[opts.cameraMove]}. Express it in the prompt using the wording the target platform understands.`);
+    }
+    if (opts.duration !== "auto") {
+      parts.push(`Target clip length: ${opts.duration}. Pace the action so it starts and completes within that time — no more beats than actually fit.`);
+    }
+    parts.push("Keep the described motion physically plausible and continuous: one uninterrupted take, no cuts, no scene changes, no teleporting objects, and nothing that would force the model to morph or re-invent the subject.");
+  }
+
+  // Bildformat — im Edit-Modus gibt das Quellbild das Format vor.
+  if (opts.mode === "edit") {
+    parts.push("Keep the aspect ratio and framing of the source image unless the requested change explicitly asks for a different crop or an outpainting.");
+  } else if (opts.ratio && opts.ratio !== "auto") {
     if (opts.platform === "midjourney") {
       parts.push(`Mandatory aspect ratio: end the prompt with --ar ${opts.ratio}.`);
     } else if (opts.platform === "sdxl" || opts.platform === "pony") {
@@ -359,7 +638,7 @@ function buildSystemPrompt(opts) {
     } else {
       parts.push(`Mandatory aspect ratio ${opts.ratio}: compose the scene for this format and state the orientation/framing in the prompt.`);
     }
-  } else if (opts.mode === "image") {
+  } else if (opts.mode === "image" || opts.mode === "video") {
     parts.push("Match the aspect ratio of the source image where the target platform supports it.");
   }
 
@@ -397,7 +676,6 @@ function buildSystemPrompt(opts) {
 /* ---------- State ---------- */
 const $ = (id) => document.getElementById(id);
 let mode = "image";
-let imageDataUrl = null;
 let lastRequest = null;
 let generating = false;
 
@@ -592,48 +870,80 @@ function saveSettings() {
   setStatus(t("saved", { m: getModel() }), "ok");
 }
 
-/* ---------- Image handling ---------- */
+/* ---------- Image handling ----------
+ * Zwei Bildplätze mit identischem Verhalten: der Hauptplatz trägt je nach Modus
+ * das Bild, das Quell- oder das Startbild; der zweite nur in „Bild → Video“ das
+ * optionale Endframe. */
 const MAX_DIM = 1792;
 
-function loadImageFile(file) {
-  if (!file || !file.type.startsWith("image/")) return;
-  const reader = new FileReader();
-  reader.onload = () => downscale(reader.result);
-  reader.readAsDataURL(file);
-}
+function createImageSlot({ zone, input, hint, preview, clear }) {
+  const dz = $(zone);
+  const fileInput = $(input);
+  const slot = { dataUrl: null };
 
-function downscale(dataUrl) {
-  const img = new Image();
-  img.onload = () => {
-    let { width: w, height: h } = img;
-    if (Math.max(w, h) > MAX_DIM) {
-      const f = MAX_DIM / Math.max(w, h);
-      w = Math.round(w * f);
-      h = Math.round(h * f);
-      const c = document.createElement("canvas");
-      c.width = w;
-      c.height = h;
-      c.getContext("2d").drawImage(img, 0, 0, w, h);
-      imageDataUrl = c.toDataURL("image/jpeg", 0.92);
-    } else {
-      imageDataUrl = dataUrl;
-    }
-    $("preview").src = imageDataUrl;
-    $("preview").hidden = false;
-    $("drop-hint").hidden = true;
-    $("btn-clear-img").hidden = false;
+  function show(dataUrl) {
+    slot.dataUrl = dataUrl;
+    $(preview).src = dataUrl;
+    $(preview).hidden = false;
+    $(hint).hidden = true;
+    $(clear).hidden = false;
+  }
+
+  slot.clear = () => {
+    slot.dataUrl = null;
+    $(preview).hidden = true;
+    $(preview).src = "";
+    $(hint).hidden = false;
+    $(clear).hidden = true;
+    fileInput.value = "";
   };
-  img.src = dataUrl;
+
+  /* Große Bilder kosten nur Tokens und sprengen bei Ollama schnell das
+   * Kontextfenster — vor dem Versand auf MAX_DIM herunterrechnen. */
+  slot.load = (file) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width: w, height: h } = img;
+        if (Math.max(w, h) <= MAX_DIM) {
+          show(reader.result);
+          return;
+        }
+        const f = MAX_DIM / Math.max(w, h);
+        w = Math.round(w * f);
+        h = Math.round(h * f);
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        c.getContext("2d").drawImage(img, 0, 0, w, h);
+        show(c.toDataURL("image/jpeg", 0.92));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  dz.addEventListener("click", (e) => { if (e.target.id !== clear) fileInput.click(); });
+  fileInput.addEventListener("change", (e) => slot.load(e.target.files[0]));
+  dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag"); });
+  dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
+  dz.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dz.classList.remove("drag");
+    slot.load(e.dataTransfer.files[0]);
+  });
+  $(clear).addEventListener("click", slot.clear);
+  return slot;
 }
 
-function clearImage() {
-  imageDataUrl = null;
-  $("preview").hidden = true;
-  $("preview").src = "";
-  $("drop-hint").hidden = false;
-  $("btn-clear-img").hidden = true;
-  $("file-input").value = "";
-}
+const mainImage = createImageSlot({
+  zone: "dropzone", input: "file-input", hint: "drop-hint", preview: "preview", clear: "btn-clear-img",
+});
+const endImage = createImageSlot({
+  zone: "dropzone-end", input: "file-input-end", hint: "drop-hint-end", preview: "preview-end", clear: "btn-clear-img-end",
+});
 
 /* ---------- Generation ---------- */
 function setStatus(msg, cls = "") {
@@ -656,11 +966,67 @@ function collectOptions() {
     style: $("opt-style").value,
     detail: $("opt-detail").value,
     ratio: document.querySelector(".ratio-btn.active")?.dataset.ratio || "auto",
+    editScope: $("opt-edit-scope").value,
+    cameraMove: $("opt-camera-move").value,
+    motion: $("opt-motion").value,
+    duration: $("opt-duration").value,
+    endImage: mode === "video" && !!endImage.dataUrl,
     tech,
     logic: $("opt-logic").checked,
     nsfw: $("opt-nsfw").checked,
     variations: $("opt-variations").checked,
   };
+}
+
+/* Baut den Nutzer-Teil der Anfrage. Bilder gehen als data:-URL mit; im Video-Modus
+ * kommt vor dem zweiten Bild eine Zeile, die es als Ziel-Endframe kennzeichnet —
+ * ohne sie wäre für das Modell nicht erkennbar, welches Bild welche Rolle hat.
+ * Gibt null zurück (und setzt den Status), wenn eine Pflichtangabe fehlt. */
+function buildUserContent() {
+  const content = [];
+  if (mode === "text") {
+    const idea = $("text-idea").value.trim();
+    if (!idea) return fail("noIdea");
+    content.push({ type: "text", text: `Idea: ${idea}` });
+    return content;
+  }
+
+  if (mode === "image") {
+    if (!mainImage.dataUrl) return fail("noImage");
+    const extra = $("image-extra").value.trim();
+    content.push({
+      type: "text",
+      text: "Analyze this image and generate the prompt." + (extra ? ` Additional instruction: ${extra}` : ""),
+    });
+    content.push({ type: "image_url", image_url: { url: mainImage.dataUrl } });
+    return content;
+  }
+
+  if (mode === "edit") {
+    if (!mainImage.dataUrl) return fail("noSourceImage");
+    const desc = $("edit-desc").value.trim();
+    if (!desc) return fail("noEditDesc");
+    content.push({ type: "text", text: `This is the source image. Requested change: ${desc}` });
+    content.push({ type: "image_url", image_url: { url: mainImage.dataUrl } });
+    return content;
+  }
+
+  // mode === "video"
+  if (!mainImage.dataUrl) return fail("noStartImage");
+  const desc = $("video-desc").value.trim();
+  if (!desc) return fail("noVideoDesc");
+  content.push({ type: "text", text: `This is the first frame of the clip. Requested motion: ${desc}` });
+  content.push({ type: "image_url", image_url: { url: mainImage.dataUrl } });
+  if (endImage.dataUrl) {
+    content.push({ type: "text", text: "This second image is the target last frame of the same clip:" });
+    content.push({ type: "image_url", image_url: { url: endImage.dataUrl } });
+  }
+  return content;
+}
+
+function fail(msgKey) {
+  setStatus(t(msgKey), "error");
+  return null;
 }
 
 async function generate(repeat = false) {
@@ -678,26 +1044,8 @@ async function generate(repeat = false) {
     lastRequest = request;
   } else {
     const opts = collectOptions();
-    const userContent = [];
-    if (mode === "image") {
-      if (!imageDataUrl) {
-        setStatus(t("noImage"), "error");
-        return;
-      }
-      const extra = $("image-extra").value.trim();
-      userContent.push({
-        type: "text",
-        text: "Analyze this image and generate the prompt." + (extra ? ` Additional instruction: ${extra}` : ""),
-      });
-      userContent.push({ type: "image_url", image_url: { url: imageDataUrl } });
-    } else {
-      const idea = $("text-idea").value.trim();
-      if (!idea) {
-        setStatus(t("noIdea"), "error");
-        return;
-      }
-      userContent.push({ type: "text", text: `Idea: ${idea}` });
-    }
+    const userContent = buildUserContent();
+    if (!userContent) return;
     request = {
       model: getModel(),
       messages: [
@@ -823,6 +1171,50 @@ function renderHistory() {
   }
 }
 
+/* ---------- Modus & dynamische Auswahllisten ----------
+ * Plattform, Änderungsumfang, Kamerabewegung, Bewegungsintensität und Cliplänge
+ * stehen zweisprachig in JS statt im HTML, weil sich ihre Inhalte je nach Modus
+ * ändern — sie werden deshalb bei jedem Modus- und Sprachwechsel neu aufgebaut. */
+function fillSelect(id, items, fallback) {
+  const el = $(id);
+  const keep = el.value;
+  el.innerHTML = "";
+  for (const it of items) el.appendChild(new Option(it[lang], it.id));
+  el.value = items.some((it) => it.id === keep) ? keep : fallback;
+}
+
+function applyMode(m) {
+  mode = m;
+  const group = MODE_GROUP[mode];
+  const isVideo = mode === "video";
+  const isEdit = mode === "edit";
+
+  document.querySelectorAll(".tab").forEach((tb) => tb.classList.toggle("active", tb.dataset.mode === mode));
+  $("pane-image").hidden = mode === "text";
+  $("pane-text").hidden = mode !== "text";
+
+  $("slot-end").hidden = !isVideo;
+  $("slot-label-main").textContent = t(isEdit ? "slotSource" : isVideo ? "slotStart" : "slotMain");
+  $("slot-label-end").textContent = t("slotEnd");
+
+  $("row-image-extra").hidden = mode !== "image";
+  $("row-edit-desc").hidden = !isEdit;
+  $("row-video-desc").hidden = !isVideo;
+
+  $("row-edit-scope").hidden = !isEdit;
+  $("row-camera-move").hidden = !isVideo;
+  $("row-motion").hidden = !isVideo;
+  $("row-duration").hidden = !isVideo;
+  // Das Quellbild gibt das Format vor — im Edit-Modus gibt es nichts zu wählen.
+  $("row-ratio").hidden = isEdit;
+
+  fillSelect("opt-platform", PLATFORMS[group], platformChoice[group]);
+  fillSelect("opt-edit-scope", EDIT_SCOPES, "minimal");
+  fillSelect("opt-camera-move", CAMERA_MOVES, "");
+  fillSelect("opt-motion", MOTION_LEVELS, "moderate");
+  fillSelect("opt-duration", DURATIONS, "auto");
+}
+
 /* ---------- Wiring ---------- */
 const ratioRow = $("ratio-row");
 for (const r of ASPECT_RATIOS) {
@@ -855,35 +1247,21 @@ for (const p of TECH_PARAMS) {
 }
 
 document.querySelectorAll(".tab").forEach((tab) => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-    tab.classList.add("active");
-    mode = tab.dataset.mode;
-    $("pane-image").hidden = mode !== "image";
-    $("pane-text").hidden = mode !== "text";
-  });
+  tab.addEventListener("click", () => applyMode(tab.dataset.mode));
 });
 
-const dz = $("dropzone");
-dz.addEventListener("click", (e) => {
-  if (e.target.id !== "btn-clear-img") $("file-input").click();
-});
-$("file-input").addEventListener("change", (e) => loadImageFile(e.target.files[0]));
-dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("drag"); });
-dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
-dz.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dz.classList.remove("drag");
-  loadImageFile(e.dataTransfer.files[0]);
-});
+/* Eingefügte Bilder landen immer im Hauptplatz; aus dem reinen Textmodus heraus
+ * wird dafür in „Bild → Prompt“ gewechselt. */
 document.addEventListener("paste", (e) => {
   const file = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith("image/"))?.getAsFile();
-  if (file) {
-    loadImageFile(file);
-    document.querySelector('.tab[data-mode="image"]').click();
-  }
+  if (!file) return;
+  if (mode === "text") applyMode("image");
+  mainImage.load(file);
 });
-$("btn-clear-img").addEventListener("click", clearImage);
+
+$("opt-platform").addEventListener("change", () => {
+  platformChoice[MODE_GROUP[mode]] = $("opt-platform").value;
+});
 
 $("btn-generate").addEventListener("click", () => generate(false));
 $("btn-again").addEventListener("click", () => generate(true));

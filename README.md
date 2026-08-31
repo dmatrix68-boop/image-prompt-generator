@@ -23,13 +23,29 @@ switching back and forth never loses a setting.
   analyzes it and produces a detailed generation prompt.
 - **Idea → Prompt**: Enter a short idea and the engine expands it into a professional
   prompt.
-- **Target platforms**: SDXL (tags + negative prompt), Pony/Illustrious (booru tags
-  incl. score/rating tags), Flux (prose), Midjourney (incl. `--ar`/`--stylize`),
-  DALL-E, Ideogram, Nano Banana/Gemini, Qwen-Image (with text rendering), Krea 2
-  (photorealistic), universal.
+- **Image → Image**: Upload a source image and describe in words what should change —
+  out comes a ready-to-use edit prompt for image-editing models. The **change scope**
+  (minimal / moderate / strong) controls how much may change alongside the requested
+  edit; on "minimal" the engine spells out what has to be preserved (identity, pose,
+  background, lighting, framing) in the prompt itself.
+- **Image → Video**: Upload a start image, optionally an **end frame** as the target
+  frame, and describe what should happen in the clip — out comes an image-to-video
+  prompt. Also selectable: camera movement (dolly, pan, orbit, crane, handheld …),
+  motion intensity (subtle / moderate / dynamic) and clip length.
+- **Target platforms**, per mode:
+  - *Image/Idea → Prompt*: SDXL (tags + negative prompt), Pony/Illustrious (booru tags
+    incl. score/rating tags), Flux (prose), Midjourney (incl. `--ar`/`--stylize`),
+    DALL-E, Ideogram, Nano Banana/Gemini, Qwen-Image (with text rendering), Krea 2
+    (photorealistic), universal.
+  - *Image → Image*: Nano Banana/Gemini, Flux.1 Kontext, Qwen-Image-Edit,
+    Seedream/SeedEdit, GPT-Image/DALL-E edit, SD/SDXL img2img + inpainting (with a
+    denoise recommendation and the region to mask), universal.
+  - *Image → Video*: Kling, Runway Gen-4, Google Veo 3 (with audio description),
+    Hailuo/MiniMax, Luma Dream Machine/Ray, Wan 2.2, Sora 2, Seedance, universal.
 - **Image formats**: Aspect-ratio selection as in the original (Auto, 1:1, 16:9, 9:16,
   4:3, 3:2) — emitted as `--ar` for Midjourney, with a matching resolution
-  recommendation for SDXL/Pony.
+  recommendation for SDXL/Pony. **Image → Image** drops the choice: there the source
+  image dictates the format.
 - **Technical parameters** (as in the original, collapsible): Logic Mode, Camera Angle,
   Shot Type, Perspective, Composition, Lighting, Atmosphere, Mood, Emotion — each with
   the same value lists as Midnight LAB v2.0.
@@ -60,7 +76,8 @@ switching back and forth never loses a setting.
    Netlify works with OpenRouter only — see Option B.
 2. Pick a provider in the top-right header and set it up under **⚙️ Settings**
    (see below).
-3. Upload an image or enter an idea → **⚡ Generate prompt**.
+3. Pick a mode at the top left, upload an image or enter an idea →
+   **⚡ Generate prompt**.
 
 ### Option A: OpenRouter (cloud)
 
@@ -118,8 +135,12 @@ Environment="OLLAMA_CONTEXT_LENGTH=8192"
 
 **Further notes**
 
-- **Image → Prompt** needs a multimodal model (`qwen2.5vl`, `llava`, `minicpm-v`,
-  `llama3.2-vision`, `gemma3`). Text-only models work in **Idea → Prompt** mode only.
+- **Image → Prompt**, **Image → Image** and **Image → Video** need a multimodal model
+  (`qwen2.5vl`, `llava`, `minicpm-v`, `llama3.2-vision`, `gemma3`). Text-only models
+  work in **Idea → Prompt** mode only.
+- The optional **end frame** in **Image → Video** sends two images in one request. Not
+  every model handles multiple images equally well; if the model ignores the second
+  one, drop the end frame and state the target state in the video description instead.
 - Keep `OLLAMA_CONTEXT_LENGTH` at 8192 or above: image tokens plus the long system
   prompt otherwise overflow the default context window and the start of the prompt
   gets truncated.

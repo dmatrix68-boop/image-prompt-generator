@@ -13,7 +13,7 @@
       <span class="brand-icon">⚡</span>
       <div>
         <h1>The Prompt Engine</h1>
-        <p class="tagline" data-i18n="tagline">Uncensored Image-to-Prompt Generator · powered by OpenRouter oder Ollama</p>
+        <p class="tagline" data-i18n="tagline">Uncensored Prompt-Generator · Bild, Bild-Edit &amp; Video · powered by OpenRouter oder Ollama</p>
       </div>
     </div>
     <div class="topbar-actions">
@@ -35,22 +35,54 @@
       <div class="tabs">
         <button class="tab active" data-mode="image" data-i18n="tab.image">🖼️ Bild → Prompt</button>
         <button class="tab" data-mode="text" data-i18n="tab.text">💡 Idee → Prompt</button>
+        <button class="tab" data-mode="edit" data-i18n="tab.edit">🎨 Bild → Bild</button>
+        <button class="tab" data-mode="video" data-i18n="tab.video">🎬 Bild → Video</button>
       </div>
 
-      <!-- Image mode -->
+      <!-- Image input — shared by the modes „Bild → Prompt“, „Bild → Bild“ und „Bild → Video“ -->
       <div id="pane-image" class="pane">
-        <div id="dropzone" class="dropzone">
-          <input type="file" id="file-input" accept="image/*" hidden>
-          <div id="drop-hint">
-            <span class="drop-icon">📥</span>
-            <p data-i18n-html="drop.hint"><strong>Bild hierher ziehen</strong>, klicken zum Auswählen<br>oder mit <kbd>Strg</kbd>+<kbd>V</kbd> einfügen</p>
+        <div class="drop-grid">
+          <div class="drop-slot">
+            <span class="slot-label" id="slot-label-main">Bild</span>
+            <div id="dropzone" class="dropzone">
+              <input type="file" id="file-input" accept="image/*" hidden>
+              <div id="drop-hint">
+                <span class="drop-icon">📥</span>
+                <p data-i18n-html="drop.hint"><strong>Bild hierher ziehen</strong>, klicken zum Auswählen<br>oder mit <kbd>Strg</kbd>+<kbd>V</kbd> einfügen</p>
+              </div>
+              <img id="preview" class="preview" hidden alt="Preview">
+              <button id="btn-clear-img" class="btn tiny danger" hidden data-i18n="img.clear">✕ Bild entfernen</button>
+            </div>
           </div>
-          <img id="preview" class="preview" hidden alt="Preview">
-          <button id="btn-clear-img" class="btn tiny danger" hidden data-i18n="img.clear">✕ Bild entfernen</button>
+          <div class="drop-slot" id="slot-end" hidden>
+            <span class="slot-label" id="slot-label-end">Endbild (optional)</span>
+            <div id="dropzone-end" class="dropzone">
+              <input type="file" id="file-input-end" accept="image/*" hidden>
+              <div id="drop-hint-end">
+                <span class="drop-icon">🎬</span>
+                <p data-i18n-html="drop.hint.end"><strong>Endbild hierher ziehen</strong><br>letztes Frame des Clips</p>
+              </div>
+              <img id="preview-end" class="preview" hidden alt="Preview end frame">
+              <button id="btn-clear-img-end" class="btn tiny danger" hidden data-i18n="img.clear.end">✕ Entfernen</button>
+            </div>
+          </div>
         </div>
-        <label class="field">
+
+        <label class="field" id="row-image-extra">
           <span data-i18n="img.extra.label">Zusätzliche Anweisung (optional)</span>
           <textarea id="image-extra" rows="2" data-i18n-ph="img.extra.ph" placeholder="z.B. „Fokus auf Lichtstimmung“, „als Anime-Version beschreiben“ …"></textarea>
+        </label>
+
+        <label class="field" id="row-edit-desc" hidden>
+          <span data-i18n="edit.desc.label">Änderungsbeschreibung</span>
+          <textarea id="edit-desc" rows="4" data-i18n-ph="edit.desc.ph" placeholder="Was soll am Bild geändert werden? z.B. „rote Lederjacke statt Mantel“, „Hintergrund gegen nächtliche Großstadt tauschen“, „Person entfernen“ …"></textarea>
+          <small data-i18n="edit.desc.small">Nur die Änderung beschreiben — was gleich bleiben soll, ergänzt die Engine selbst.</small>
+        </label>
+
+        <label class="field" id="row-video-desc" hidden>
+          <span data-i18n="video.desc.label">Videobeschreibung</span>
+          <textarea id="video-desc" rows="4" data-i18n-ph="video.desc.ph" placeholder="Was soll im Clip passieren? z.B. „dreht langsam den Kopf zur Kamera, Haare wehen im Wind“, „Kamera fährt durch die Gasse“ …"></textarea>
+          <small data-i18n="video.desc.small">Das erste Bild ist das Startframe. Ein optionales Endbild wird als Ziel-Frame mitanalysiert (das Modell muss zwei Bilder verarbeiten können).</small>
         </label>
       </div>
 
@@ -66,18 +98,7 @@
       <div class="options">
         <label class="field">
           <span data-i18n="opt.platform">Ziel-Plattform</span>
-          <select id="opt-platform">
-            <option value="sdxl" data-i18n="plat.sdxl">Stable Diffusion / SDXL (Tags + Negative)</option>
-            <option value="pony" data-i18n="plat.pony">Pony / Illustrious (Booru-Tags)</option>
-            <option value="flux" data-i18n="plat.flux">Flux (natürliche Sprache)</option>
-            <option value="midjourney" data-i18n="plat.mj">Midjourney (mit --Parametern)</option>
-            <option value="dalle" data-i18n="plat.dalle">DALL-E (natürliche Sprache)</option>
-            <option value="ideogram" data-i18n="plat.ideogram">Ideogram (natürliche Sprache, Text-Rendering)</option>
-            <option value="nano" data-i18n="plat.nano">Nano Banana / Gemini (natürliche Sprache)</option>
-            <option value="qwen-image" data-i18n="plat.qwen">Qwen-Image (natürliche Sprache, Text-Rendering)</option>
-            <option value="krea2" data-i18n="plat.krea2">Krea 2 (fotorealistisch, natürliche Sprache)</option>
-            <option value="generic" data-i18n="plat.generic">Universell / andere Generatoren</option>
-          </select>
+          <select id="opt-platform"></select>
         </label>
         <label class="field">
           <span data-i18n="opt.style">Stil</span>
@@ -99,7 +120,23 @@
             <option value="extreme" data-i18n="detail.extreme">Extrem (jede Kleinigkeit)</option>
           </select>
         </label>
-        <div class="field span2">
+        <label class="field" id="row-edit-scope" hidden>
+          <span data-i18n="opt.scope">Änderungsumfang</span>
+          <select id="opt-edit-scope"></select>
+        </label>
+        <label class="field" id="row-camera-move" hidden>
+          <span data-i18n="opt.cammove">Kamerabewegung</span>
+          <select id="opt-camera-move"></select>
+        </label>
+        <label class="field" id="row-motion" hidden>
+          <span data-i18n="opt.motion">Bewegungsintensität</span>
+          <select id="opt-motion"></select>
+        </label>
+        <label class="field" id="row-duration" hidden>
+          <span data-i18n="opt.duration">Cliplänge</span>
+          <select id="opt-duration"></select>
+        </label>
+        <div class="field span2" id="row-ratio">
           <span data-i18n="ratio.label">Bildformat (Aspect Ratio)</span>
           <div id="ratio-row" class="ratio-row"></div>
         </div>
@@ -183,7 +220,7 @@
     <p class="legal" data-i18n="dlg.legal">Nur für volljährige Nutzer. Keine Analyse von Darstellungen Minderjähriger oder nicht-einvernehmlicher realer Inhalte — solche Anfragen werden abgelehnt. Du bist für die Einhaltung der Nutzungsbedingungen deines Modell-Anbieters verantwortlich.</p>
   </dialog>
 
-  <div class="version-footer">v1.2</div>
+  <div class="version-footer">v1.3</div>
 
   <script src="js/app.js"></script>
 </body>
