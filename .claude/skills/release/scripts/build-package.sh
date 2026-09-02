@@ -9,7 +9,7 @@ set -euo pipefail
 
 TAG="${1:?Aufruf: build-package.sh <tag> [ref]}"
 REF="${2:-origin/main}"
-FILES=(index.html css js start.bat serve.py README.md README.de.md LICENSE)
+FILES=(index.html css js docs start.bat serve.py README.md README.de.md LICENSE)
 ZIP="dist/image-prompt-generator-${TAG}.zip"
 
 cd "$(git rev-parse --show-toplevel)"
@@ -19,7 +19,7 @@ git archive --format=tar "$REF" "${FILES[@]}" | tar x -C dist/stage
 rm -rf dist/stage
 
 python3 - "$ZIP" "$TAG" <<'PY'
-import sys, zipfile
+import re, sys, zipfile
 path, tag = sys.argv[1], sys.argv[2]
 z = zipfile.ZipFile(path)
 ok = True
@@ -39,6 +39,13 @@ check(f"Versions-Footer = {tag}", f'version-footer">{tag}<' in html,
 check("start.bat mit CRLF", z.read("start.bat").count(b"\r\n") > 3)
 for name in ("css/style.css", "js/app.js", "serve.py", "README.md", "README.de.md", "LICENSE"):
     check(name, name in z.namelist() and len(z.read(name)) > 0)
+# Die READMEs binden die Screenshots relativ ein; fehlen sie im Archiv, sind es
+# im ausgepackten Paket tote Bildverweise.
+refs = set()
+for readme in ("README.md", "README.de.md"):
+    refs |= set(re.findall(r"!\[[^\]]*\]\((docs/[^)\s]+)\)", z.read(readme).decode("utf-8")))
+for name in sorted(refs):
+    check(name, name in z.namelist() and len(z.read(name)) > 0, "in den READMEs verlinkt")
 sys.exit(0 if ok else 1)
 PY
 
