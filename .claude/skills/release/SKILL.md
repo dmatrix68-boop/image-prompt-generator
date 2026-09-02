@@ -11,7 +11,7 @@ Das Zippen und Veröffentlichen erledigt `.github/workflows/release.yml` — ein
 `workflow_dispatch` mit den Eingaben `tag` (z.B. `v1.4`) und `title`. Der Job
 checkt den gewählten Ref aus, baut daraus
 
-    index.html css js start.bat serve.py README.md README.de.md LICENSE
+    index.html css js docs start.bat serve.py README.md README.de.md LICENSE
 
 zu `image-prompt-generator-<tag>.zip` und legt das Release mit
 `gh release create --notes-file .github/RELEASE_NOTES.md` an.

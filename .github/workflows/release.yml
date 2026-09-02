@@ -23,7 +23,7 @@ jobs:
         run: |
           mkdir -p dist
           zip -r "dist/image-prompt-generator-${{ inputs.tag }}.zip" \
-            index.html css js start.bat serve.py README.md README.de.md LICENSE
+            index.html css js docs start.bat serve.py README.md README.de.md LICENSE
       - name: Create release or upload package to existing one
         env:
           GH_TOKEN: ${{ github.token }}
