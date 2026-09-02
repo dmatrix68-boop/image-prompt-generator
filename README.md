@@ -36,7 +36,7 @@ switching back and forth never loses a setting.
   - *Image/Idea → Prompt*: SDXL (tags + negative prompt), Pony/Illustrious (booru tags
     incl. score/rating tags), Flux (prose), Midjourney (incl. `--ar`/`--stylize`),
     DALL-E, Ideogram, Nano Banana/Gemini, Qwen-Image (with text rendering), Krea 2
-    (photorealistic), universal.
+    (photorealistic), Z-Image Turbo (no negative prompt), universal.
   - *Image → Image*: Nano Banana/Gemini, Flux.1 Kontext, Qwen-Image-Edit,
     Seedream/SeedEdit, GPT-Image/DALL-E edit, SD/SDXL img2img + inpainting (with a
     denoise recommendation and the region to mask), universal.

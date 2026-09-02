@@ -315,6 +315,11 @@ Output ONE flowing natural-language prompt paragraph optimized for photorealisti
 Format exactly:
 PROMPT:
 <paragraph>`,
+  "zimage-turbo": `Target: Z-Image Turbo (distilled few-step model).
+Output ONE structured natural-language prompt of roughly 80-250 words in this order: shot and subject, appearance, clothing/state of dress, environment, lighting, mood, style and medium. Turbo runs without classifier-free guidance, so a negative prompt has no effect — phrase every constraint positively inside the prompt ("plain seamless background, no lettering" instead of a negative list). Skip generic quality tags like "masterpiece", "8k" or "award winning"; they do nothing here, so describe the wanted qualities concretely instead. The model renders text well in English and Chinese: put any lettering in double quotes, keep one language per text element, and say where in the image it sits.
+Format exactly:
+PROMPT:
+<paragraph>`,
   generic: `Target: a general-purpose AI image generator.
 Output ONE detailed natural-language prompt paragraph covering subject, appearance, pose, clothing/state of dress, setting, lighting, composition and style.
 Format exactly:
@@ -441,6 +446,7 @@ const PLATFORMS = {
     { id: "nano", de: "Nano Banana / Gemini (natürliche Sprache)", en: "Nano Banana / Gemini (natural language)" },
     { id: "qwen-image", de: "Qwen-Image (natürliche Sprache, Text-Rendering)", en: "Qwen-Image (natural language, text rendering)" },
     { id: "krea2", de: "Krea 2 (fotorealistisch, natürliche Sprache)", en: "Krea 2 (photorealistic, natural language)" },
+    { id: "zimage-turbo", de: "Z-Image Turbo (natürliche Sprache, ohne Negative)", en: "Z-Image Turbo (natural language, no negative)" },
     { id: "generic", de: "Universell / andere Generatoren", en: "Universal / other generators" },
   ],
   edit: [
