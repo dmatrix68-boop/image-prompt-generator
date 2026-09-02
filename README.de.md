@@ -37,7 +37,7 @@ Anbieter getrennt gespeichert — ein Wechsel verliert also keine Einstellung.
   - *Bild/Idee → Prompt*: SDXL (Tags + Negative Prompt), Pony/Illustrious (Booru-Tags
     inkl. score-/rating-Tags), Flux (Fließtext), Midjourney (inkl. `--ar`/`--stylize`),
     DALL-E, Ideogram, Nano Banana/Gemini, Qwen-Image (mit Text-Rendering), Krea 2
-    (fotorealistisch), universell.
+    (fotorealistisch), Z-Image Turbo (ohne Negative Prompt), universell.
   - *Bild → Bild*: Nano Banana/Gemini, Flux.1 Kontext, Qwen-Image-Edit,
     Seedream/SeedEdit, GPT-Image/DALL-E Edit, SD/SDXL img2img + Inpainting (mit
     Denoise-Empfehlung und Maskenbereich), universell.
