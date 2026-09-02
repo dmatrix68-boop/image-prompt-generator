@@ -61,6 +61,41 @@ Anbieter getrennt gespeichert — ein Wechsel verliert also keine Einstellung.
   Browsers und geht ausschließlich direkt an `openrouter.ai` — bzw. bei Ollama an den
   eigenen Rechner.
 
+## Screenshots
+
+Die vier Modi in der Oberfläche. Quellbilder, Eingaben und Ergebnisse sind
+Beispiele zur Illustration — die Prompts erzeugt im Betrieb das gewählte Modell.
+
+### 🖼️ Bild → Prompt
+
+Bild hochladen, optional eine Zusatzanweisung — heraus kommt ein
+Generierungs-Prompt im Format der gewählten Ziel-Plattform (hier SDXL mit
+Negative Prompt).
+
+![Modus „Bild → Prompt“: hochgeladenes Bild links, generierter SDXL-Prompt rechts](docs/screenshots/image-de.png)
+
+### 💡 Idee → Prompt
+
+Ohne Bild: Eine kurze Idee genügt, die Engine baut daraus den vollständigen
+Prompt. Der Bildbereich entfällt, alle übrigen Optionen bleiben.
+
+![Modus „Idee → Prompt“: Eingabefeld für die Idee, rechts der ausgebaute Prompt](docs/screenshots/text-de.png)
+
+### 🎨 Bild → Bild
+
+Quellbild plus Änderungsbeschreibung ergeben einen Edit-Prompt. Zusätzlich gibt
+es hier den **Änderungsumfang**; die Bildformat-Auswahl entfällt, weil das
+Quellbild das Format vorgibt.
+
+![Modus „Bild → Bild“: Quellbild und Änderungsbeschreibung, rechts die Edit-Anweisung](docs/screenshots/edit-de.png)
+
+### 🎬 Bild → Video
+
+Startbild, optionales Endbild als Ziel-Frame und die Videobeschreibung; dazu
+Kamerabewegung, Bewegungsintensität und Cliplänge.
+
+![Modus „Bild → Video“: Start- und Endbild nebeneinander, rechts der Video-Prompt](docs/screenshots/video-de.png)
+
 ## Nutzung
 
 1. Seite starten:

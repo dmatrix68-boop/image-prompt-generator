@@ -61,6 +61,41 @@ switching back and forth never loses a setting.
   localStorage and is sent exclusively and directly to `openrouter.ai` — or, with
   Ollama, to your own machine.
 
+## Screenshots
+
+The four modes in the interface. Source images, inputs, and results are
+illustrative examples — in actual use the prompts come from the selected model.
+
+### 🖼️ Image → Prompt
+
+Upload an image, optionally add an extra instruction — out comes a generation
+prompt in the format of the chosen target platform (SDXL with a negative prompt
+here).
+
+![“Image → Prompt” mode: uploaded image on the left, generated SDXL prompt on the right](docs/screenshots/image-en.png)
+
+### 💡 Idea → Prompt
+
+No image needed: a short idea is enough, and the engine expands it into the full
+prompt. The image area disappears; every other option stays.
+
+![“Idea → Prompt” mode: input field for the idea, expanded prompt on the right](docs/screenshots/text-en.png)
+
+### 🎨 Image → Image
+
+A source image plus a change description yields an edit prompt. This mode adds
+the **change scope**; the aspect-ratio selection is gone because the source image
+dictates the format.
+
+![“Image → Image” mode: source image and change description, edit instruction on the right](docs/screenshots/edit-en.png)
+
+### 🎬 Image → Video
+
+Start image, optional end frame as the target frame, and the video description —
+plus camera movement, motion intensity, and clip length.
+
+![“Image → Video” mode: start and end frame side by side, video prompt on the right](docs/screenshots/video-en.png)
+
 ## Usage
 
 1. Start the page:
