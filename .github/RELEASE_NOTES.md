@@ -1,10 +1,11 @@
-**The Prompt Engine — Uncensored v1.3** does more than describe images: the same analysis now writes editing prompts and image-to-video prompts.
+**The Prompt Engine — Uncensored v1.3.1** is a documentation release: the READMEs now show what each of the four modes actually looks like, and the archive carries those images along.
 
-## New in v1.3
+## New in v1.3.1
 
-- **Image → Image**: upload a source image, describe the change in your own words, get a finished edit prompt. A **change scope** (minimal / moderate / strong) decides how much may shift around the requested edit — on "minimal" the prompt spells out what has to stay identical (identity, pose, background, lighting, framing), which is what keeps an editor from quietly re-rendering the whole picture. Seven target platforms: Nano Banana/Gemini, Flux.1 Kontext, Qwen-Image-Edit, Seedream/SeedEdit, GPT-Image/DALL-E edit, SD/SDXL img2img + inpainting (with a denoise recommendation and the region to mask), universal.
-- **Image → Video**: upload a start frame, optionally an **end frame**, and describe what should happen — out comes an image-to-video prompt. With an end frame attached the second image is labelled as the target last frame, so the model describes one continuous transition instead of two separate shots. Camera movement (dolly, pan, tilt, orbit, crane, handheld, tracking, zoom), motion intensity (subtle / moderate / dynamic) and clip length are selectable. Nine target platforms: Kling, Runway Gen-4, Veo 3 (with a separate audio line), Hailuo/MiniMax, Luma Dream Machine/Ray, Wan 2.2, Sora 2, Seedance, universal.
-- **Options that follow the mode**: the target-platform list changes with the tab and every group keeps its own selection, so switching modes never resets what you picked. Editing drops the aspect-ratio row — the source image sets the format — and reads the "Automatic" style as *keep the original look* rather than *derive a style*.
+- **Screenshots of all four modes**, in German and English, one set per README. They show what changes with the tab: the optional end frame plus the camera, motion and clip-length selectors in *Image → Video*, the change-scope selector instead of the aspect-ratio row in *Image → Image*, and no image area at all in *Idea → Prompt*. Source images, inputs and results in the screenshots are illustrative examples — the captions say so, since in use the prompts come from whichever model you selected.
+- **The `docs/` folder ships with the archive.** The READMEs link the screenshots relatively, so without those files an unpacked release showed broken images. The packaging check now verifies that every image the READMEs link is really inside the archive. This is why the download is a few megabytes instead of a few hundred kilobytes.
+
+Nothing changed in the application itself: apart from the version footer, `index.html`, `css/style.css` and `js/app.js` are identical to v1.3. If you are already running v1.3, there is no functional reason to update.
 
 ## What it is
 
