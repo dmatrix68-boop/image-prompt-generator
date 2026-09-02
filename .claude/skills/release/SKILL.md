@@ -62,6 +62,10 @@ genau dort geht es schief: der Workflow nimmt kommentarlos, was im Repo steht.
 - **`start.bat` braucht CRLF.** `.gitattributes` erzwingt das; ohne die
   Zeilenenden liest `cmd.exe` mehrzeilige Blöcke falsch und der Windows-Start
   bricht ab. Das Prüfskript testet es im fertigen Archiv.
+- **Die Screenshots in `docs/screenshots/` zeigen den Versions-Footer der Version,
+  in der sie entstanden sind.** Das ist Absicht: neu erzeugen heißt jedes Mal rund
+  3 MB neue Bilddaten in der Git-Historie, nur damit eine Zahl in der Ecke stimmt.
+  Neu aufnehmen also nur, wenn sich die Oberfläche wirklich geändert hat.
 - **`dist/` gehört nicht ins Repo** — steht in `.gitignore`, ist aber schnell
   mit `git add -A` mitgenommen.
 
