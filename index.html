@@ -168,6 +168,7 @@
         <h2 data-i18n="result.h">Ergebnis</h2>
         <div>
           <button id="btn-copy" class="btn tiny" hidden data-i18n="copy.btn">📋 Kopieren</button>
+          <button id="btn-send" class="btn tiny" hidden data-i18n-title="send.btn.title" title="Prompt an Text-Nodes im ComfyUI-Workflow senden (ComfyUI-Lora-Manager)"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 2 10.6l6.6 3.1L22 2Z"/><path d="M22 2 9.8 15l4.3 7L22 2Z"/><path d="m8.6 15.2v5.9l2.9-3.2-2.9-2.7Z"/></svg> <span data-i18n="send.btn">LoRA Manager</span></button>
           <button id="btn-again" class="btn tiny" hidden data-i18n="again.btn">🔄 Neu generieren</button>
         </div>
       </div>
@@ -218,6 +219,40 @@
     </div>
     <p id="dlg-status" class="status"></p>
     <p class="legal" data-i18n="dlg.legal">Nur für volljährige Nutzer. Keine Analyse von Darstellungen Minderjähriger oder nicht-einvernehmlicher realer Inhalte — solche Anfragen werden abgelehnt. Du bist für die Einhaltung der Nutzungsbedingungen deines Modell-Anbieters verantwortlich.</p>
+  </dialog>
+
+  <!-- ===== An LoRA Manager senden ===== -->
+  <dialog id="dlg-send">
+    <h2><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 2 10.6l6.6 3.1L22 2Z"/><path d="M22 2 9.8 15l4.3 7L22 2Z"/><path d="m8.6 15.2v5.9l2.9-3.2-2.9-2.7Z"/></svg> <span data-i18n="send.h">An LoRA Manager senden</span></h2>
+    <p class="dlg-intro" data-i18n-html="send.intro">Setzt den Prompt direkt in eine Text-Node des geöffneten ComfyUI-Workflows ein — über die Schnittstelle von <a href="https://github.com/willmiao/ComfyUI-Lora-Manager" target="_blank" rel="noopener">ComfyUI-Lora-Manager</a>.</p>
+    <div class="field">
+      <span data-i18n="send.url.label">ComfyUI-Adresse</span>
+      <div class="inline-row">
+        <input type="text" id="send-comfy-url" placeholder="http://127.0.0.1:8188" autocomplete="off" spellcheck="false">
+        <button type="button" id="btn-send-reload" class="btn ghost" data-i18n="send.reload">🔄 Nodes laden</button>
+      </div>
+    </div>
+    <label class="field" id="row-send-variant" hidden>
+      <span data-i18n="send.variant.label">Variante</span>
+      <select id="send-variant"></select>
+    </label>
+    <label class="field">
+      <span data-i18n="send.pos.label">Prompt → Node</span>
+      <select id="send-pos"></select>
+    </label>
+    <label class="field" id="row-send-neg" hidden>
+      <span data-i18n="send.neg.label">Negative Prompt → Node</span>
+      <select id="send-neg"></select>
+    </label>
+    <label class="field check">
+      <input type="checkbox" id="send-append">
+      <span data-i18n="send.append">An vorhandenen Text anhängen statt ersetzen</span>
+    </label>
+    <div class="dlg-actions">
+      <button type="button" id="btn-send-cancel" class="btn ghost" data-i18n="send.cancel">Abbrechen</button>
+      <button type="button" id="btn-send-go" class="btn primary"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 2 10.6l6.6 3.1L22 2Z"/><path d="M22 2 9.8 15l4.3 7L22 2Z"/><path d="m8.6 15.2v5.9l2.9-3.2-2.9-2.7Z"/></svg> <span data-i18n="send.go">Senden</span></button>
+    </div>
+    <p id="send-status" class="status"></p>
   </dialog>
 
   <div class="version-footer">v1.4.0</div>

@@ -235,6 +235,9 @@ textarea:focus, input:focus, select:focus { outline: 2px solid var(--accent); bo
 .btn.tiny { padding: 5px 10px; font-size: 0.8rem; border-radius: 8px; }
 .btn.ghost { background: transparent; }
 .btn.danger { color: var(--danger); }
+/* Inline-SVG-Symbole (Papierflieger „Senden“) — übernehmen die Textfarbe des Buttons. */
+.icon { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.125em; }
+.output-head .btn .icon { margin-right: 2px; }
 
 .status { min-height: 1.2em; color: var(--muted); font-size: 0.85rem; margin: 10px 0 0; }
 .status.error { color: var(--danger); }
@@ -285,6 +288,11 @@ dialog {
 dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 dialog h2 { margin-top: 0; }
 .dlg-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 16px; }
+.dlg-intro { color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin: -6px 0 16px; }
+.dlg-intro a { color: var(--accent-2); }
+.inline-row { display: flex; gap: 8px; }
+.inline-row input { flex: 1; min-width: 0; }
+.inline-row .btn { white-space: nowrap; }
 .legal { color: var(--muted); font-size: 0.72rem; line-height: 1.5; margin-top: 18px; border-top: 1px solid var(--border); padding-top: 12px; }
 
 kbd {

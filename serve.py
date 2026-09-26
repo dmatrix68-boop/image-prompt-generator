@@ -10,11 +10,17 @@ Nebenbei wird geprüft, ob der lokale Ollama-Server läuft, und er notfalls
 gestartet. Schlägt das fehl, startet die Seite trotzdem — sie funktioniert dann
 mit OpenRouter weiter.
 
+Außerdem reicht der Server unter /comfyui-proxy/ genau zwei Aufrufe an
+ComfyUI-Lora-Manager weiter (Nodes abfragen, Prompt einsetzen). ComfyUI lehnt
+Browser-Anfragen von einem anderen Port ab, solange es nicht mit
+--enable-cors-header läuft; über den Proxy kommen sie von hier statt vom Browser.
+
 Aufruf: python serve.py [--no-ollama]   (Windows: start.bat doppelklicken)
 """
 
 import http.server
 import json
+import re
 import os
 import shutil
 import socket
@@ -22,6 +28,8 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
+import urllib.parse
 import urllib.request
 import webbrowser
 
@@ -34,6 +42,17 @@ OLLAMA_URL = "http://127.0.0.1:11434"
 OLLAMA_WAIT_SECONDS = 30
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# Proxy zu ComfyUI-Lora-Manager. Bewusst eine feste Liste statt eines offenen
+# Durchreichens: nur was die Seite braucht, und nichts, was Workflows startet.
+COMFY_PROXY_PREFIX = "/comfyui-proxy"
+COMFY_PROXY_ROUTES = {
+    ("GET", "/api/lm/get-registry"),
+    ("POST", "/api/lm/update-node-widget"),
+}
+COMFY_DEFAULT_URL = "http://127.0.0.1:8188"
+COMFY_TIMEOUT_SECONDS = 10
+COMFY_MAX_BODY = 1024 * 1024
 
 # Kein Proxy für localhost: Ein systemweit gesetztes http_proxy würde urllib sonst
 # auch bei 127.0.0.1 über den Proxy schicken und die Prüfung fälschlich scheitern lassen.
@@ -124,6 +143,93 @@ def pick_port():
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ROOT, **kwargs)
+
+    def do_GET(self):
+        if self.path.startswith(COMFY_PROXY_PREFIX + "/"):
+            self.proxy_comfy("GET")
+        else:
+            super().do_GET()
+
+    def do_POST(self):
+        if self.path.startswith(COMFY_PROXY_PREFIX + "/"):
+            self.proxy_comfy("POST")
+        else:
+            self.send_error(501, "Unsupported method ('POST')")
+
+    def proxy_json(self, status, payload):
+        body = json.dumps(payload).encode("utf-8")
+        self.proxy_reply(status, "application/json", body)
+
+    def proxy_reply(self, status, content_type, body):
+        self.send_response(status)
+        # Kennung für die Seite: Diese Antwort kommt vom Proxy, nicht von einem
+        # beliebigen Webserver, der den Pfad nur nicht kennt.
+        self.send_header("X-Prompt-Engine-Proxy", "1")
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def same_origin(self):
+        """Nur Anfragen dieser Seite selbst durchlassen.
+
+        Sonst könnte jede fremde Webseite im Browser über den Proxy an ComfyUI
+        schreiben — genau das, wovor ComfyUIs eigene Origin-Prüfung schützt.
+        """
+        # Host muss localhost sein: Eine fremde Domain, die per DNS-Rebinding auf
+        # 127.0.0.1 zeigt, hätte sonst eine passende Origin.
+        host = urllib.parse.urlsplit("//" + (self.headers.get("Host") or "")).hostname
+        if host not in ("localhost", "127.0.0.1", "::1"):
+            return False
+        site = self.headers.get("Sec-Fetch-Site")
+        if site and site not in ("same-origin", "none"):
+            return False
+        origin = self.headers.get("Origin")
+        if origin:
+            return urllib.parse.urlsplit(origin).netloc.lower() == (self.headers.get("Host") or "").lower()
+        # Browser senden bei POST immer eine Origin; fehlt sie, kommt die Anfrage
+        # nicht aus einer Seite.
+        return self.command == "GET"
+
+    def proxy_comfy(self, method):
+        path = urllib.parse.urlsplit(self.path).path[len(COMFY_PROXY_PREFIX):]
+        if (method, path) not in COMFY_PROXY_ROUTES:
+            self.proxy_json(404, {"success": False, "error": "Not proxied", "message": path})
+            return
+        if not self.same_origin():
+            self.proxy_json(403, {"success": False, "error": "Forbidden", "message": "cross-origin request"})
+            return
+
+        target = (self.headers.get("X-Comfy-Target") or COMFY_DEFAULT_URL).strip().rstrip("/")
+        if not re.match(r"^https?://[^/\s]+(/\S*)?$", target, re.IGNORECASE):
+            self.proxy_json(400, {"success": False, "error": "Bad target", "message": target})
+            return
+
+        body = None
+        if method == "POST":
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                length = -1
+            if not 0 < length <= COMFY_MAX_BODY:
+                self.proxy_json(413, {"success": False, "error": "Bad body size"})
+                return
+            body = self.rfile.read(length)
+
+        req = urllib.request.Request(target + path, data=body, method=method)
+        if body is not None:
+            req.add_header("Content-Type", "application/json")
+        try:
+            with _direct.open(req, timeout=COMFY_TIMEOUT_SECONDS) as resp:
+                self.proxy_reply(resp.status, resp.headers.get("Content-Type", "application/json"), resp.read())
+        except urllib.error.HTTPError as err:
+            # Fehlerantworten von ComfyUI/LoRA Manager unverändert weiterreichen —
+            # die Seite wertet deren JSON (z.B. "Empty Registry") selbst aus.
+            self.proxy_reply(err.code, err.headers.get("Content-Type", "text/plain"), err.read())
+        except (urllib.error.URLError, OSError) as err:
+            reason = getattr(err, "reason", err)
+            self.proxy_json(502, {"success": False, "error": "ComfyUI unreachable", "message": str(reason)})
 
 
 def main():
