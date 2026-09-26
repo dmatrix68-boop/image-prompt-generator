@@ -17,6 +17,9 @@ const LS = {
   provider: "pe_provider",
   ollamaUrl: "pe_ollama_url",
   ollamaModel: "pe_ollama_model",
+  comfyUrl: "pe_comfy_url",
+  sendPos: "pe_send_pos",
+  sendNeg: "pe_send_neg",
 };
 
 /* Empfohlene Vision-Modelle mit unmoderierten Endpoints (Stand: Juli 2026).
@@ -95,6 +98,18 @@ const UI_EN = {
   "result.h": "Result",
   "copy.btn": "📋 Copy",
   "again.btn": "🔄 Regenerate",
+  "send.btn": "LoRA Manager",
+  "send.btn.title": "Send the prompt to text nodes in the ComfyUI workflow (ComfyUI-Lora-Manager)",
+  "send.h": "Send to LoRA Manager",
+  "send.intro": 'Puts the prompt straight into a text node of the workflow open in ComfyUI — through the interface of <a href="https://github.com/willmiao/ComfyUI-Lora-Manager" target="_blank" rel="noopener">ComfyUI-Lora-Manager</a>.',
+  "send.url.label": "ComfyUI address",
+  "send.reload": "🔄 Load nodes",
+  "send.variant.label": "Variant",
+  "send.pos.label": "Prompt → node",
+  "send.neg.label": "Negative prompt → node",
+  "send.append": "Append to the existing text instead of replacing it",
+  "send.cancel": "Cancel",
+  "send.go": "Send",
   "output.ph": "The generated prompt will appear here.",
   "history.summary": "History (stored locally)",
   "history.clear": "Clear history",
@@ -161,6 +176,22 @@ const MSG = {
     grpOllamaText: "Installiert — nur Text (für „Idee → Prompt“)",
     modelSmallOR: "Empfohlen für unzensierte Analyse: Qwen3-VL (unmoderierte Endpoints). Große Anbieter-Modelle (GPT, Claude, Gemini) verweigern NSFW-Bilder meist.",
     modelSmallOllama: "Für „Bild → Prompt“ ist ein Vision-Modell nötig (z.B. qwen2.5vl, llava, minicpm-v). Reine Text-Modelle funktionieren nur im Modus „Idee → Prompt“.",
+    sendNothing: "Kein Prompt zum Senden gefunden.",
+    sendLoading: "Lade Nodes aus dem ComfyUI-Workflow …",
+    sendLoaded: "{n} passende Nodes gefunden.",
+    sendSkip: "— nicht senden",
+    sendVariant: "Variante {n}",
+    sendSame: "Prompt und Negative Prompt können nicht in dieselbe Node.",
+    sendNoTarget: "Bitte eine Ziel-Node wählen.",
+    sendBusy: "Sende …",
+    sendDone: "An LoRA Manager gesendet: {d}",
+    sendNoNodes: "Keine passende Node im Workflow. ComfyUI muss im Browser geöffnet sein, mit einer Node „Prompt (LoraManager)“, „Text (LoraManager)“ oder „CLIP Text Encode“ — deren Text-Feld darf nicht per Verbindung belegt sein. Jede andere Text-Node lässt sich per Rechtsklick → Mark as → Send Prompt Target freigeben.",
+    sendNoLM: "LoRA Manager antwortet nicht (HTTP 404) — ist ComfyUI-Lora-Manager in diesem ComfyUI installiert und die Adresse richtig?",
+    sendStandalone: "LoRA Manager läuft im Standalone-Modus und kann keinen Workflow erreichen — es braucht die in ComfyUI installierte Variante.",
+    sendNet: "ComfyUI unter {u} nicht erreichbar ({e}). {h}",
+    comfyHintProxy: "Läuft ComfyUI, und stimmt die Adresse?",
+    comfyHintMixed: "Diese Seite läuft über https, ComfyUI aber über http — der Browser blockiert das als Mixed Content. Seite lokal per start.bat bzw. „python3 serve.py“ öffnen.",
+    comfyHintDirect: "Läuft ComfyUI? Ohne den Proxy aus serve.py lehnt ComfyUI Anfragen von anderen Seiten ab: Seite per start.bat bzw. „python3 serve.py“ starten — oder ComfyUI mit --enable-cors-header starten.",
   },
   en: {
     welcome: "Welcome! Pick a provider under ⚙️ Settings: OpenRouter (API key required) or Ollama (local, no key).",
@@ -209,6 +240,22 @@ const MSG = {
     grpOllamaText: "Installed — text only (for “Idea → Prompt”)",
     modelSmallOR: "Recommended for uncensored analysis: Qwen3-VL (unmoderated endpoints). Big-vendor models (GPT, Claude, Gemini) usually refuse NSFW images.",
     modelSmallOllama: "“Image → Prompt” needs a vision model (e.g. qwen2.5vl, llava, minicpm-v). Text-only models work in “Idea → Prompt” mode only.",
+    sendNothing: "No prompt found to send.",
+    sendLoading: "Loading nodes from the ComfyUI workflow …",
+    sendLoaded: "Found {n} matching nodes.",
+    sendSkip: "— don't send",
+    sendVariant: "Variant {n}",
+    sendSame: "Prompt and negative prompt can't go into the same node.",
+    sendNoTarget: "Please pick a target node.",
+    sendBusy: "Sending …",
+    sendDone: "Sent to LoRA Manager: {d}",
+    sendNoNodes: "No matching node in the workflow. ComfyUI has to be open in the browser, with a “Prompt (LoraManager)”, “Text (LoraManager)” or “CLIP Text Encode” node whose text field isn't fed by a link. Any other text node can be enabled via right-click → Mark as → Send Prompt Target.",
+    sendNoLM: "LoRA Manager doesn't answer (HTTP 404) — is ComfyUI-Lora-Manager installed in this ComfyUI, and is the address right?",
+    sendStandalone: "LoRA Manager runs in standalone mode and can't reach a workflow — this needs the version installed inside ComfyUI.",
+    sendNet: "ComfyUI not reachable at {u} ({e}). {h}",
+    comfyHintProxy: "Is ComfyUI running, and is the address right?",
+    comfyHintMixed: "This page is served over https but ComfyUI over http — the browser blocks that as mixed content. Open the page locally via start.bat or “python3 serve.py”.",
+    comfyHintDirect: "Is ComfyUI running? Without the proxy in serve.py, ComfyUI rejects requests from other pages: start this page via start.bat or “python3 serve.py” — or start ComfyUI with --enable-cors-header.",
   },
 };
 
@@ -220,12 +267,13 @@ function t(key, vars = {}) {
   return s;
 }
 
-const deSnapshot = { text: {}, html: {}, ph: {} };
+const deSnapshot = { text: {}, html: {}, ph: {}, title: {} };
 
 function initI18n() {
   document.querySelectorAll("[data-i18n]").forEach((el) => { deSnapshot.text[el.dataset.i18n] = el.textContent; });
   document.querySelectorAll("[data-i18n-html]").forEach((el) => { deSnapshot.html[el.dataset.i18nHtml] = el.innerHTML; });
   document.querySelectorAll("[data-i18n-ph]").forEach((el) => { deSnapshot.ph[el.dataset.i18nPh] = el.placeholder; });
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => { deSnapshot.title[el.dataset.i18nTitle] = el.title; });
 }
 
 function applyLanguage() {
@@ -241,6 +289,10 @@ function applyLanguage() {
   document.querySelectorAll("[data-i18n-ph]").forEach((el) => {
     const k = el.dataset.i18nPh;
     el.placeholder = lang === "en" ? (UI_EN[k] ?? deSnapshot.ph[k]) : deSnapshot.ph[k];
+  });
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+    const k = el.dataset.i18nTitle;
+    el.title = lang === "en" ? (UI_EN[k] ?? deSnapshot.title[k]) : deSnapshot.title[k];
   });
   // Dynamisch erzeugte Elemente
   for (const p of TECH_PARAMS) {
@@ -1068,6 +1120,7 @@ async function generate(repeat = false) {
   generating = true;
   $("btn-generate").disabled = true;
   $("btn-copy").hidden = true;
+  $("btn-send").hidden = true;
   $("btn-again").hidden = true;
   const out = $("output");
   out.textContent = "";
@@ -1109,6 +1162,7 @@ async function generate(repeat = false) {
     out.textContent = text.trim() || t("emptyResponse");
     setStatus(t("done"), "ok");
     $("btn-copy").hidden = false;
+    $("btn-send").hidden = false;
     $("btn-again").hidden = false;
     if (text.trim()) addHistory(text.trim(), request.model);
   } catch (e) {
@@ -1172,8 +1226,247 @@ function renderHistory() {
     div.addEventListener("click", () => {
       $("output").textContent = item.text;
       $("btn-copy").hidden = false;
+      $("btn-send").hidden = false;
     });
     box.appendChild(div);
+  }
+}
+
+/* ---------- An LoRA Manager senden ----------
+ * ComfyUI-Lora-Manager (github.com/willmiao/ComfyUI-Lora-Manager) meldet die Nodes
+ * des im Browser geöffneten ComfyUI-Workflows an sein Backend und nimmt über
+ * /api/lm/update-node-widget Text für sie entgegen — dieselbe Schnittstelle, die
+ * sein eigener „Send to workflow“-Knopf benutzt. Welche Nodes in Frage kommen,
+ * liefert /api/lm/get-registry; gefiltert wird genau wie im LoRA Manager selbst.
+ *
+ * Transport: ComfyUI weist Anfragen ab, deren Origin nicht zu seiner eigenen
+ * Adresse passt (403, CSRF-Schutz), solange es nicht mit --enable-cors-header
+ * läuft. serve.py bringt deshalb einen Proxy unter comfyui-proxy/ mit; fehlt er
+ * (andere Auslieferung), geht die Anfrage direkt an ComfyUI. */
+const COMFY_DEFAULT_URL = "http://127.0.0.1:8188";
+const COMFY_PROXY = "comfyui-proxy"; // relativ, damit es auch unter einem Unterpfad klappt
+
+function getComfyUrl() { return normalizeUrl(localStorage.getItem(LS.comfyUrl)) || COMFY_DEFAULT_URL; }
+
+/* null = noch nicht geprüft; danach true/false für die restliche Sitzung. */
+let comfyProxy = null;
+
+async function comfyFetch(path, init = {}) {
+  const base = getComfyUrl();
+  if (comfyProxy !== false && /^https?:$/.test(location.protocol)) {
+    try {
+      const res = await fetch(`${COMFY_PROXY}${path}`, {
+        ...init,
+        headers: { ...init.headers, "X-Comfy-Target": base },
+      });
+      // Nur der Proxy setzt diesen Header — ein 404 des Webservers ist kein Proxy.
+      if (res.headers.get("X-Prompt-Engine-Proxy")) {
+        comfyProxy = true;
+        return res;
+      }
+    } catch { /* kein Proxy erreichbar */ }
+    comfyProxy = false;
+  }
+  try {
+    return await fetch(`${base}${path}`, init);
+  } catch (e) {
+    const hint = location.protocol === "https:" && /^http:\/\//i.test(base) ? t("comfyHintMixed") : t("comfyHintDirect");
+    throw new Error(t("sendNet", { u: base, e: e.message, h: hint }));
+  }
+}
+
+async function comfyJson(res) {
+  try { return await res.json(); } catch { return null; }
+}
+
+/* Zerlegt die Modellausgabe in Varianten mit Prompt und Negative Prompt.
+ * Erwartet das Format aus PLATFORM_SPECS („PROMPT:“, „NEGATIVE:“ …, Varianten
+ * durch „### …“ getrennt); Markdown-Fettdruck um die Marker wird toleriert.
+ * Ohne jeden Marker gilt die ganze Ausgabe als Prompt. */
+const SECTION_LINE = /^\s*\**\s*(PROMPT|NEGATIVE|RESULT|AUDIO|DENOISE|MASK|RESOLUTION)\s*\**\s*:\s*\**\s*(.*)$/i;
+const VARIANT_LINE = /^\s*#{2,}\s*(.+?)\s*$/;
+
+function parsePromptOutput(text) {
+  const variants = [];
+  let cur = null;
+  let sec = null;
+  const newVariant = (label) => {
+    cur = { label, sections: {} };
+    variants.push(cur);
+    sec = null;
+  };
+  for (const line of text.split("\n")) {
+    const v = line.match(VARIANT_LINE);
+    if (v) { newVariant(v[1]); continue; }
+    const s = line.match(SECTION_LINE);
+    if (s) {
+      const name = s[1].toUpperCase();
+      // Zweites PROMPT ohne „###“-Zeile davor: das Modell hat die Überschrift vergessen.
+      if (!cur || (name === "PROMPT" && cur.sections.PROMPT)) newVariant("");
+      sec = name;
+      cur.sections[sec] = s[2] ? [s[2]] : [];
+      continue;
+    }
+    if (sec) cur.sections[sec].push(line);
+  }
+  const join = (lines) => (lines || []).filter((l) => !/^\s*-{3,}\s*$/.test(l)).join("\n").trim();
+  const out = variants
+    .map((vr) => ({ label: vr.label, prompt: join(vr.sections.PROMPT), negative: join(vr.sections.NEGATIVE) }))
+    .filter((vr) => vr.prompt);
+  if (!out.length && !variants.length && text.trim() && !/^\s*REFUSED:/i.test(text)) {
+    return [{ label: "", prompt: text.trim(), negative: "" }];
+  }
+  return out;
+}
+
+function registryError(status, data) {
+  if (data?.error === "Standalone Mode Active") return t("sendStandalone");
+  if (data?.error === "Empty Registry") return t("sendNoNodes");
+  if (status === 404 && !data) return t("sendNoLM");
+  // 502 vom Proxy: ComfyUI selbst nicht erreichbar.
+  if (status === 502) return t("sendNet", { u: getComfyUrl(), e: data?.message || "HTTP 502", h: t("comfyHintProxy") });
+  return data?.message || data?.error || `HTTP ${status}`;
+}
+
+/* Filter wie sendPromptToWorkflow im LoRA Manager: aktive Nodes mit freiem
+ * Text-Feld oder als „Send Prompt Target“ markiert. Ist das Text-Feld mit einer
+ * anderen Node verbunden, liest ComfyUI den Link — ein Einsetzen wäre wirkungslos. */
+async function loadComfyNodes() {
+  const res = await comfyFetch("/api/lm/get-registry");
+  const data = await comfyJson(res);
+  if (!res.ok || !data?.success) throw new Error(registryError(res.status, data));
+  const nodes = Object.entries(data.data?.nodes || {})
+    .filter(([, n]) =>
+      (n.mode === undefined || n.mode === null || n.mode === 0) &&
+      n.capabilities?.text_widget_connected !== true &&
+      (n.capabilities?.has_text_widget === true || n.marker_role === "send_prompt_target"))
+    .map(([key, n]) => ({
+      key,
+      id: n.id,
+      graphId: n.graph_id ?? null,
+      label: `#${n.id} ${n.title || n.comfy_class || n.type_name || ""}${n.graph_name ? ` · ${n.graph_name}` : ""}`,
+    }))
+    .sort((a, b) => String(a.graphId ?? "").localeCompare(String(b.graphId ?? "")) || Number(a.id) - Number(b.id));
+  if (!nodes.length) throw new Error(t("sendNoNodes"));
+  return nodes;
+}
+
+async function injectText(node, text, mode) {
+  const res = await comfyFetch("/api/lm/update-node-widget", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "inject_text",
+      value: text,
+      mode,
+      node_ids: [{ node_id: node.id, graph_id: node.graphId }],
+    }),
+  });
+  const data = await comfyJson(res);
+  if (!res.ok || !data?.success) throw new Error(data?.error || `HTTP ${res.status}`);
+  const failed = (data.results || []).find((r) => !r.success);
+  if (failed) throw new Error(failed.error || `HTTP ${res.status}`);
+}
+
+const sendState = { variants: [], nodes: [], loadId: 0 };
+
+function setSendStatus(msg, cls = "") {
+  const el = $("send-status");
+  el.textContent = msg;
+  el.className = `status ${cls}`;
+}
+
+function currentVariant() {
+  return sendState.variants[Number($("send-variant").value) || 0];
+}
+
+/* Vorauswahl: zuletzt benutzte Node, sonst per Titel („neg“ → Negative). */
+function fillNodeSelect(id, remembered, wantNegative) {
+  const sel = $(id);
+  sel.innerHTML = "";
+  if (wantNegative) sel.appendChild(new Option(t("sendSkip"), ""));
+  for (const n of sendState.nodes) sel.appendChild(new Option(n.label, n.key));
+  const keys = sendState.nodes.map((n) => n.key);
+  const byTitle = sendState.nodes.find((n) => /neg/i.test(n.label) === wantNegative)?.key;
+  if (keys.includes(remembered)) sel.value = remembered;
+  else if (byTitle) sel.value = byTitle;
+  else sel.value = wantNegative ? "" : keys[0] ?? "";
+}
+
+function updateSendRows() {
+  const v = currentVariant();
+  $("row-send-neg").hidden = !v?.negative;
+  $("btn-send-go").disabled = !sendState.nodes.length;
+}
+
+async function loadSendNodes() {
+  const url = normalizeUrl($("send-comfy-url").value) || COMFY_DEFAULT_URL;
+  $("send-comfy-url").value = url;
+  localStorage.setItem(LS.comfyUrl, url);
+  const loadId = ++sendState.loadId;
+  sendState.nodes = [];
+  $("send-pos").innerHTML = "";
+  $("send-neg").innerHTML = "";
+  updateSendRows();
+  setSendStatus(t("sendLoading"));
+  try {
+    const nodes = await loadComfyNodes();
+    if (loadId !== sendState.loadId) return; // inzwischen neu geladen
+    sendState.nodes = nodes;
+    fillNodeSelect("send-pos", localStorage.getItem(LS.sendPos), false);
+    fillNodeSelect("send-neg", localStorage.getItem(LS.sendNeg), true);
+    updateSendRows();
+    setSendStatus(t("sendLoaded", { n: nodes.length }), "ok");
+  } catch (e) {
+    if (loadId !== sendState.loadId) return;
+    setSendStatus(e.message, "error");
+  }
+}
+
+function openSendDialog() {
+  const variants = parsePromptOutput($("output").textContent);
+  if (!variants.length) {
+    setStatus(t("sendNothing"), "error");
+    return;
+  }
+  sendState.variants = variants;
+  const vs = $("send-variant");
+  vs.innerHTML = "";
+  variants.forEach((v, i) => vs.appendChild(new Option(v.label || t("sendVariant", { n: i + 1 }), String(i))));
+  $("row-send-variant").hidden = variants.length < 2;
+  $("send-comfy-url").value = getComfyUrl();
+  setSendStatus("");
+  $("dlg-send").showModal();
+  updateSendRows();
+  loadSendNodes();
+}
+
+async function sendToLoraManager() {
+  const v = currentVariant();
+  const byKey = (k) => sendState.nodes.find((n) => n.key === k);
+  const pos = byKey($("send-pos").value);
+  const neg = v.negative && !$("row-send-neg").hidden ? byKey($("send-neg").value) : null;
+  if (!pos) return setSendStatus(t("sendNoTarget"), "error");
+  if (neg && neg.key === pos.key) return setSendStatus(t("sendSame"), "error");
+
+  const mode = $("send-append").checked ? "append" : "replace";
+  $("btn-send-go").disabled = true;
+  setSendStatus(t("sendBusy"));
+  try {
+    await injectText(pos, v.prompt, mode);
+    const done = [`Prompt → ${pos.label}`];
+    if (neg) {
+      await injectText(neg, v.negative, mode);
+      done.push(`Negative → ${neg.label}`);
+    }
+    localStorage.setItem(LS.sendPos, pos.key);
+    if (v.negative) localStorage.setItem(LS.sendNeg, neg ? neg.key : "");
+    $("dlg-send").close();
+    setStatus(t("sendDone", { d: done.join(" · ") }), "ok");
+  } catch (e) {
+    setSendStatus(t("error", { e: e.message }), "error");
+  } finally {
+    $("btn-send-go").disabled = !sendState.nodes.length;
   }
 }
 
@@ -1294,6 +1587,13 @@ $("set-provider").addEventListener("change", () => {
   populateModelSelect([recommendedGroup()]);
   refreshModels();
 });
+
+$("btn-send").addEventListener("click", openSendDialog);
+$("btn-send-reload").addEventListener("click", loadSendNodes);
+$("send-comfy-url").addEventListener("keydown", (e) => { if (e.key === "Enter") loadSendNodes(); });
+$("send-variant").addEventListener("change", updateSendRows);
+$("btn-send-cancel").addEventListener("click", () => $("dlg-send").close());
+$("btn-send-go").addEventListener("click", sendToLoraManager);
 
 $("btn-settings").addEventListener("click", openSettings);
 $("btn-save-settings").addEventListener("click", saveSettings);

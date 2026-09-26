@@ -52,6 +52,11 @@ Anbieter getrennt gespeichert — ein Wechsel verliert also keine Einstellung.
 - **Zweisprachig**: Sprachumschalter (DE/EN) oben rechts, Auswahl wird gespeichert.
 - **Optionen**: Stil-Vorgabe, Detailgrad, 3-Varianten-Modus, Streaming-Ausgabe,
   Kopier-Button, lokaler Verlauf.
+- **An ComfyUI senden (LoRA Manager)**: Der Papierflieger-Button neben „Kopieren“
+  setzt Prompt und Negative Prompt direkt in Text-Nodes des geöffneten
+  ComfyUI-Workflows ein — über die Schnittstelle von
+  [ComfyUI-Lora-Manager](https://github.com/willmiao/ComfyUI-Lora-Manager).
+  Siehe [An ComfyUI senden](#an-comfyui-senden-lora-manager).
 - **Unzensiert**: NSFW-Schalter — explizite Bilder werden direkt und ohne Umschreibungen
   analysiert. Empfohlene Standard-Modelle (Qwen3-VL-Familie) laufen auf unmoderierten
   OpenRouter-Endpoints; lokal via Ollama entscheidet ohnehin nur das Modell selbst.
@@ -185,6 +190,37 @@ Environment="OLLAMA_CONTEXT_LENGTH=8192"
   konkreten Grund (Mixed Content, `file://`, fremde Origin oder Dienst nicht
   erreichbar). Ein Aufruf von `http://localhost:11434` in der Adresszeile beweist
   übrigens nichts: dabei prüft der Browser gar keine Origin.
+
+### An ComfyUI senden (LoRA Manager)
+
+Voraussetzung ist [ComfyUI-Lora-Manager](https://github.com/willmiao/ComfyUI-Lora-Manager)
+als Custom Node in ComfyUI. Dessen Browser-Erweiterung meldet die Nodes des
+geöffneten Workflows an sein Backend; genau darüber setzt die Prompt Engine den
+Text ein — derselbe Weg, den der „Send to workflow“-Knopf im LoRA Manager nutzt.
+
+1. ComfyUI starten und den Workflow **im Browser geöffnet** lassen.
+2. Prompt generieren, dann auf den Papierflieger-Button **LoRA Manager** neben
+   „Kopieren“ klicken.
+3. Im Dialog die ComfyUI-Adresse prüfen (Standard `http://127.0.0.1:8188`) und je
+   eine Ziel-Node für **Prompt** und **Negative Prompt** wählen. Bei drei Varianten
+   wählt man zusätzlich die Variante. **Senden** ersetzt den Text der Node — oder
+   hängt ihn an, wenn der Haken gesetzt ist.
+
+Als Ziel angeboten werden aktive Nodes vom Typ **Prompt (LoraManager)**,
+**Text (LoraManager)** und **CLIP Text Encode**, deren Text-Feld nicht per
+Verbindung von einer anderen Node belegt ist. Jede andere Text-Node lässt sich in
+ComfyUI per Rechtsklick → **Mark as → Send Prompt Target** freigeben. Die zuletzt
+gewählten Nodes merkt sich die Seite; ohne Vorgeschichte landet eine Node mit
+„neg“ im Titel beim Negative Prompt.
+
+**Verbindung**: ComfyUI lehnt Anfragen von Seiten auf einem anderen Port ab
+(HTTP 403), solange es nicht mit `--enable-cors-header` läuft. `start.bat` bzw.
+`serve.py` bringen deshalb einen kleinen Proxy mit, der nur diese zwei Aufrufe an
+ComfyUI weiterreicht und nur Anfragen dieser Seite selbst annimmt — damit genügt
+ComfyUI in der Standardkonfiguration. Wird die Seite anders ausgeliefert (etwa
+per `python3 -m http.server`), geht die Anfrage direkt an ComfyUI; dann muss
+ComfyUI mit `--enable-cors-header` gestartet werden. Von einer https-Seite aus
+(GitHub Pages) ist ein http-ComfyUI wegen Mixed Content nicht erreichbar.
 
 ## Modell-Hinweise
 

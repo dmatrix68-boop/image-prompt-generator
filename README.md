@@ -52,6 +52,11 @@ switching back and forth never loses a setting.
 - **Bilingual**: Language switch (DE/EN) in the top right; the choice is remembered.
 - **Options**: Style preset, detail level, 3-variation mode, streaming output, copy
   button, local history.
+- **Send to ComfyUI (LoRA Manager)**: The paper-plane button next to “Copy” puts
+  the prompt and negative prompt straight into text nodes of the workflow open in
+  ComfyUI — through the interface of
+  [ComfyUI-Lora-Manager](https://github.com/willmiao/ComfyUI-Lora-Manager).
+  See [Send to ComfyUI](#send-to-comfyui-lora-manager).
 - **Uncensored**: NSFW toggle — explicit images are analyzed directly and without
   euphemisms. The recommended default models (Qwen3-VL family) run on unmoderated
   OpenRouter endpoints; running locally via Ollama, only the model itself decides.
@@ -183,6 +188,37 @@ Environment="OLLAMA_CONTEXT_LENGTH=8192"
   (mixed content, `file://`, foreign origin, or service unreachable). Note that
   opening `http://localhost:11434` in the address bar proves nothing — that request
   carries no origin for the browser to check.
+
+### Send to ComfyUI (LoRA Manager)
+
+This needs [ComfyUI-Lora-Manager](https://github.com/willmiao/ComfyUI-Lora-Manager)
+installed as a custom node in ComfyUI. Its browser extension reports the nodes of
+the open workflow to its backend, and that is exactly how The Prompt Engine puts
+the text in — the same route the “Send to workflow” button in LoRA Manager takes.
+
+1. Start ComfyUI and keep the workflow **open in the browser**.
+2. Generate a prompt, then click the paper-plane button **LoRA Manager** next to
+   “Copy”.
+3. In the dialog, check the ComfyUI address (default `http://127.0.0.1:8188`) and
+   pick one target node each for **prompt** and **negative prompt**. With three
+   variations, pick the variant as well. **Send** replaces the node's text — or
+   appends to it when the box is ticked.
+
+Offered as targets are active nodes of type **Prompt (LoraManager)**,
+**Text (LoraManager)** and **CLIP Text Encode** whose text field isn't fed by a
+link from another node. Any other text node can be enabled in ComfyUI via
+right-click → **Mark as → Send Prompt Target**. The page remembers the nodes you
+picked last; without history, a node with “neg” in its title gets the negative
+prompt.
+
+**Connection**: ComfyUI rejects requests from pages on another port (HTTP 403)
+unless it runs with `--enable-cors-header`. That is why `start.bat` and
+`serve.py` include a small proxy that forwards only these two calls to ComfyUI
+and only accepts requests from this page itself — so ComfyUI's default
+configuration is enough. If the page is served some other way (e.g. with
+`python3 -m http.server`), the request goes to ComfyUI directly, and ComfyUI has
+to be started with `--enable-cors-header`. From an https page (GitHub Pages), an
+http ComfyUI is unreachable because of mixed content.
 
 ## Model notes
 
